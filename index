@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gestão de Garagem</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .card:hover{ box-shadow: 0 8px 30px rgba(2,6,23,.08) }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-white to-slate-50 text-slate-900">
+  <header class="sticky top-0 z-40 bg-white/70 backdrop-blur border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+      <span class="text-2xl">🚗</span>
+      <a href="#/" class="text-xl font-semibold">Gestão de Garagem</a>
+      <span id="header-count" class="text-sm text-slate-500"></span>
+      <div class="ml-auto flex items-center gap-2 w-full max-w-md">
+        <span class="text-slate-500">🔎</span>
+        <input id="search" class="w-full border rounded-md px-3 py-2 text-sm" placeholder="Procurar por nome, matrícula, categoria..." />
+      </div>
+    </div>
+  </header>
+
+  <main id="app" class="max-w-7xl mx-auto px-4 py-6"></main>
+
+  <script>
+    // ======= Config =======
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1_7Q9kPnS97QGs6pKznNQpgI4sN-A63F2FIPUuZuNZ9w/pub?output=csv"; // URL CSV público do seu Google Sheets
+    const SHEET_API_URL = ""; // (opcional; manter vazio se não vai gravar pelo site)
+
+    // ======= Utilitários de datas e CSV =======
+    const todayMidnight = () => new Date(new Date().toDateString());
+    const isPast = (d) => (d ? d < todayMidnight() : false);
+
+    function parseToDate(s){
+      if (!s) return null;
+      if (s instanceof Date) return isNaN(+s) ? null : s;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) { // DD/MM/AAAA
+        const [d, m, y] = s.split('/').map(Number);
+        return new Date(y, m - 1, d);
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { // YYYY-MM-DD
+        const [y, m, d] = s.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      }
+      const dt = new Date(s);
+      return isNaN(+dt) ? null : dt;
+    }
+    function toDisplayDate(val){
+      if (!val) return "";
+      if (typeof val === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(val)) return val;
+      const d = parseToDate(val); if (!d) return "";
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+    function csvToObjects(csv) {
+      const rows = [];
+      let i = 0, field = '', inQuotes = false, row = [];
+      while (i < csv.length) {
+        const c = csv[i];
+        if (inQuotes) {
+          if (c === '"' && csv[i + 1] === '"') { field += '"'; i++; }
+          else if (c === '"') { inQuotes = false; }
+          else { field += c; }
+        } else {
+          if (c === '"') inQuotes = true;
+          else if (c === ',') { row.push(field.trim()); field = ''; }
+          else if (c === '\n') { row.push(field.trim()); rows.push(row); row = []; field = ''; }
+          else if (c === '\r') { /* ignore */ }
+          else { field += c; }
+        }
+        i++;
+      }
+      if (field.length || row.length) { row.push(field.trim()); rows.push(row); }
+      if (!rows.length) return [];
+      const header = rows[0].map((h) => h.toLowerCase());
+      return rows.slice(1).filter(r => r.length && r.some(x => x !== '')).map((r, i) => {
+        const o = {}; header.forEach((h, idx) => (o[h] = (r[idx] ?? '').trim()));
+        return o;
+      });
+    }
+
+    // ======= Dados mock se não houver sheet =======
+    function generateMockAssets(){
+      const today = todayMidnight();
+      const fmt = (d) => toDisplayDate(d);
+      return Array.from({ length: 20 }).map((_, i) => {
+        const id = String(i+1).padStart(3, '0');
+        return {
+          id,
+          nome: `Veículo ${id}`,
+          foto_url: "",
+          categoria: i % 3 === 0 ? "Carrinha" : i % 3 === 1 ? "Empilhador" : "Ligeiro",
+          matricula: `AA-${10+i}-ZZ`,
+          km: String(15000 + i*1200),
+          estado: ["Operacional","Oficina","Reserva","Inativo"][i%4],
+          proxima_manutencao: fmt(new Date(today.getFullYear(), today.getMonth(), today.getDate() - (i % 5))),
+          inspecao: fmt(new Date(today.getFullYear(), today.getMonth()+1, 5+i)),
+          seguro: fmt(new Date(today.getFullYear(), today.getMonth(), today.getDate() + (i % 7) - 3)),
+          motivo_alerta: i % 5 === 0 ? "Revisão maior pendente" : "",
+          observacoes: "—",
+        }
+      });
+    }
+
+    function computeAlerts(asset){
+      const alerts = [];
+      const m = parseToDate(asset.proxima_manutencao);
+      const insp = parseToDate(asset.inspecao);
+      const seg = parseToDate(asset.seguro);
+      if (isPast(m)) alerts.push({ key: 'proxima_manutencao', label: 'Manutenção vencida', date: toDisplayDate(asset.proxima_manutencao) });
+      if (isPast(insp)) alerts.push({ key: 'inspecao', label: 'Inspeção vencida', date: toDisplayDate(asset.inspecao) });
+      if (isPast(seg)) alerts.push({ key: 'seguro', label: 'Seguro vencido', date: toDisplayDate(asset.seguro) });
+      if (asset.motivo_alerta) alerts.push({ key: 'motivo', label: asset.motivo_alerta, date: null });
+      return alerts;
+    }
+
+    // ======= Estado simples =======
+    const store = {
+      assets: null,
+      filtered: [],
+      error: '',
+      query: '',
+      route: { page: 'home', id: null },
+    };
+
+    // ======= Carregar dados =======
+    async function loadAssets(){
+      try{
+        if(!SHEET_CSV_URL){
+          store.assets = generateMockAssets();
+          return;
+        }
+        const res = await fetch(SHEET_CSV_URL, { cache: 'no-store' });
+        if(!res.ok) throw new Error('Falha ao carregar o CSV');
+        const text = await res.text();
+        const rows = csvToObjects(text); // objetos com cabeçalhos em minúsculas
+        store.assets = rows.map((d, i) => normalizeSheetRow(d, i));
+      }catch(e){
+        store.error = (e && e.message) || String(e);
+        store.assets = generateMockAssets();
+      }
+    }
+
+    // Converte uma linha do Sheet (com vários esquemas possíveis) → objeto padrão do app
+    function normalizeSheetRow(d, i){
+      const g = (k, ...alts) => {
+        const v = d[k]; if (v) return v;
+        for (const a of alts){ if (d[a] && String(d[a]).trim()!=='') return d[a]; }
+        return '';
+      };
+      // Fotos
+      const foto1 = g('foto_url','foto','photo','foto1','foto 1');
+      const foto2 = g('foto2','foto 2');
+      // Nome / Viatura
+      let nome = g('nome','viatura');
+      if(!nome){
+        const marca = g('marca');
+        const modelo = g('modelo');
+        nome = [marca, modelo].filter(Boolean).join(' ').trim() || `Ativo ${i+1}`;
+      }
+      // Matrícula
+      const matricula = g('matricula','matrícula','matricula','matricula ');
+      // KM (se só existir "km última revisão", usamos esse valor)
+      let km = g('km','km última revisão','km da ultima revisão');
+      // Estado default
+      const estado = g('estado') || 'Operacional';
+      // Datas
+      const dataCompra = g('data da compra','data_compra');
+      const dataUltRev = g('data da última revisão','data ultima revisão','data_ultima_revisao');
+      const proxima_manutencao = g('proxima_manutencao','próxima manutenção'); // se existir já pronta
+      const inspecao = g('inspecao','inspeção','data inspeção','data inspeçao','data inspeção');
+      const seguro = g('seguro','data seguro');
+      // Descrição / Observações e alertas
+      const descricaoUltRev = g('descrição da última revisão','ultima descrição dos trabalhos da ulitma revisão','descricao_ultima_revisao');
+      const observacoes = g('observacoes','observações') || descricaoUltRev || (dataCompra?`Data da compra: ${toDisplayDate(dataCompra)}`:'');
+      const motivo_alerta = g('motivo_alerta','motivo');
+      // Categoria (livre) — pode vir de uma coluna própria; caso não exista, vazio
+      const categoria = g('categoria','tipo');
+      // ID
+      const id = g('id') || String(i+1);
+
+      // Normalizações finais
+      const norm = {
+        id,
+        nome,
+        foto_url: foto1 || '',
+        categoria,
+        matricula,
+        km,
+        estado,
+        proxima_manutencao: toDisplayDate(proxima_manutencao || dataUltRev),
+        inspecao: toDisplayDate(inspecao),
+        seguro: toDisplayDate(seguro),
+        motivo_alerta,
+        observacoes,
+      };
+      // Guarda foto2 extra em campo não exibido por padrão (pode ser usado no futuro)
+      if (foto2) norm._foto2 = foto2;
+      return norm;
+    }
+
+    // ======= Routing (hash) =======
+    function parseRoute(){
+      const hash = location.hash.slice(1) || '/';
+      if(hash.startsWith('/ativo/')){
+        const id = decodeURIComponent(hash.split('/')[2]||'');
+        return { page: 'detail', id };
+      }
+      return { page: 'home', id: null };
+    }
+
+    // ======= Render =======
+    function render(){
+      const app = document.getElementById('app');
+      const count = document.getElementById('header-count');
+      count.textContent = `${(store.assets||[]).length} ativos`;
+
+      if(store.route.page === 'home'){
+        const q = store.query.toLowerCase();
+        store.filtered = (store.assets||[]).filter(a => [a.nome,a.matricula,a.categoria,a.estado].filter(Boolean).some(v => String(v).toLowerCase().includes(q)));
+
+        app.innerHTML = `
+          ${store.error ? `<div class="mb-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">⚠️ ${store.error}. A mostrar dados de exemplo (20 ativos).</div>` : ''}
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Todos os ativos</h2>
+            <div class="flex items-center gap-2">
+              <button ${SHEET_API_URL? '' : 'disabled'} class="px-3 py-2 text-sm rounded-md border bg-white disabled:opacity-50" title="${SHEET_API_URL? 'Criar um novo ativo' : 'Ative o Web App (SHEET_API_URL) para criar'}" id="btn-new">Novo Ativo</button>
+              <a class="text-sm underline" id="csv-model" download="modelo_gestao_garagem.csv">Descarregar modelo CSV (DD/MM/AAAA)</a>
+            </div>
+          </div>
+          <div id="new-form"></div>
+          <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4" id="grid"></div>
+        `;
+
+        const model = 'id,nome,foto_url,categoria,matricula,km,estado,proxima_manutencao,inspecao,seguro,motivo_alerta,observacoes\n001,Veículo 001,,Ligeiro,AA-00-ZZ,15000,Operacional,01/08/2025,10/10/2025,29/08/2025,Revisão maior pendente,Notas...\n';
+        document.getElementById('csv-model').href = `data:text/csv;charset=utf-8,${encodeURIComponent(model)}`;
+
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        for(const a of store.filtered){
+          const alerts = computeAlerts(a);
+          const card = document.createElement('div');
+          card.className = 'card overflow-hidden rounded-xl border bg-white';
+          card.innerHTML = `
+            <a href="#/ativo/${encodeURIComponent(a.id)}">
+              <div class="aspect-video bg-slate-100 flex items-center justify-center overflow-hidden">
+                ${a.foto_url ? `<img src="${a.foto_url}" alt="${a.nome}" class="w-full h-full object-cover"/>` : `<div class="text-slate-500 text-sm py-8">🖼️ Sem foto</div>`}
+              </div>
+            </a>
+            <div class="p-3 border-t">
+              <div class="text-base font-medium flex items-center gap-2">
+                <span class="truncate" title="${a.nome}">${a.nome}</span>
+                ${alerts.length ? `<span class="ml-auto inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">⚠️ ${alerts.length}</span>` : ''}
+              </div>
+              <div class="mt-2 text-sm text-slate-600 flex justify-between"><span class="truncate">${a.categoria||'—'}</span><span class="font-medium">${a.matricula||'—'}</span></div>
+              <div class="text-sm text-slate-600 flex justify-between"><span>KM</span><span class="font-medium">${a.km||'—'}</span></div>
+              <div class="mt-2 flex flex-wrap gap-1 text-xs" id="badges-${a.id}"></div>
+            </div>
+          `;
+          grid.appendChild(card);
+          const b = document.getElementById(`badges-${a.id}`);
+          for(const al of alerts){
+            const span = document.createElement('span');
+            span.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200';
+            span.textContent = `${al.label}${al.date? ' ('+al.date+')' : ''}`;
+            b.appendChild(span);
+          }
+        }
+
+        // Novo Ativo (apenas se SHEET_API_URL estiver definido)
+        const btn = document.getElementById('btn-new');
+        if(btn && SHEET_API_URL){
+          btn.addEventListener('click', () => {
+            const nextId = (store.assets||[]).reduce((m,a)=>Math.max(m, parseInt(a.id||0,10)||0),0) + 1;
+            const container = document.getElementById('new-form');
+            container.innerHTML = renderNewForm(nextId);
+            wireNewForm(container, nextId);
+          });
+        }
+      }
+
+      if(store.route.page === 'detail'){
+        const a = (store.assets||[]).find(x => String(x.id) === String(store.route.id));
+        if(!a){ app.innerHTML = `<div class="min-h-[50vh] grid place-items-center text-slate-600">Ativo não encontrado. <a href=\"#/\" class=\"underline ml-2\">Voltar</a></div>`; return; }
+        const alerts = computeAlerts(a);
+        app.innerHTML = `
+          <div class="mb-4"><a href="#/" class="text-sm underline">← Voltar</a></div>
+          <div class="grid gap-6 md:grid-cols-3">
+            <div class="md:col-span-2 card rounded-xl border bg-white overflow-hidden">
+              <div class="aspect-video bg-slate-100 flex items-center justify-center overflow-hidden">
+                ${a.foto_url ? `<img src="${a.foto_url}" alt="${a.nome}" class="w-full h-full object-cover"/>` : `<div class=\"text-slate-500 text-sm py-8\">🖼️ Sem foto</div>`}
+              </div>
+              <div class="p-4 border-t">
+                <h1 class="text-xl font-semibold">${a.nome}</h1>
+                <div class="mt-3 grid gap-2 text-sm">
+                  ${infoRow('Categoria', a.categoria)}
+                  ${infoRow('Matrícula', a.matricula)}
+                  ${infoRow('Próx. Manutenção', toDisplayDate(a.proxima_manutencao))}
+                  ${infoRow('Inspeção', toDisplayDate(a.inspecao))}
+                  ${infoRow('Seguro', toDisplayDate(a.seguro))}
+                  ${infoRow('Estado', a.estado)}
+                  ${infoRow('KM', a.km)}
+                </div>
+                ${a.observacoes ? `<div class="mt-3"><div class="text-sm text-slate-500">Observações</div><div class="text-sm">${a.observacoes}</div></div>`:''}
+              </div>
+            </div>
+            <div class="grid gap-4">
+              <div class="card rounded-xl border bg-white">
+                <div class="p-4 border-b font-medium">Alertas</div>
+                <div class="p-4 text-sm">
+                  ${alerts.length ? `<ul class="space-y-2">${alerts.map(al=>`<li class=\"flex items-start gap-2\">⚠️<div><div class=\"font-medium\">${al.label}</div>${al.date?`<div class=\"text-slate-500\">Data: ${al.date}</div>`:''}</div></li>`).join('')}</ul>` : '<div class="text-slate-500">Sem alertas para este ativo.</div>'}
+                </div>
+              </div>
+              <div class="card rounded-xl border bg-white">
+                <div class="p-4 border-b font-medium">Origem dos dados</div>
+                <div class="p-4 text-sm text-slate-600">
+                  ${SHEET_CSV_URL ? `<div>Leitura a partir de Google Sheets (CSV público). <strong>Datas em DD/MM/AAAA</strong>.</div><div class=\"truncate\">${SHEET_CSV_URL}</div>` : `<div>A usar dados de exemplo. Para ligar ao seu Sheet:<ol class=\"list-decimal ml-5 space-y-1\"><li>Publicar a folha como CSV.</li><li>Cole o URL em <code>SHEET_CSV_URL</code> neste ficheiro.</li></ol></div>`}
+                  <div class="mt-3">${SHEET_API_URL?`Escrita ativa via Apps Script.`:`Para ativar escrita/criação, publique um Web App (Apps Script) e defina <code>SHEET_API_URL</code>.`}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function infoRow(label, value){
+      return `<div class=\"flex items-center justify-between border-b pb-2\"><div class=\"text-slate-500\">${label}</div><div class=\"font-medium\">${value||'—'}</div></div>`;
+    }
+
+    function renderNewForm(nextId){
+      return `
+        <form class="card rounded-xl border bg-white p-4 mb-6" id="new-asset-form">
+          <div class="font-medium mb-3">Novo Ativo</div>
+          <div class="grid gap-3 md:grid-cols-2 text-sm">
+            ${input('id','ID (auto)', String(nextId).padStart(3,'0'), true)}
+            ${input('nome','Nome')}
+            ${input('foto_url','URL da Foto')}
+            ${input('categoria','Categoria')}
+            ${input('matricula','Matrícula')}
+            ${input('km','KM')}
+            ${input('estado','Estado','Operacional')}
+            ${input('proxima_manutencao','Próx. Manutenção (DD/MM/AAAA)','', 'dd/mm/aaaa')}
+            ${input('inspecao','Inspeção (DD/MM/AAAA)','', 'dd/mm/aaaa')}
+            ${input('seguro','Seguro (DD/MM/AAAA)','', 'dd/mm/aaaa')}
+            ${input('motivo_alerta','Motivo de Alerta')}
+            ${input('observacoes','Observações')}
+          </div>
+          <div class="flex gap-2 justify-end mt-3">
+            <button type="button" id="btn-cancel" class="px-3 py-2 text-sm rounded-md border bg-white">Cancelar</button>
+            <button type="submit" class="px-3 py-2 text-sm rounded-md border bg-slate-900 text-white">Criar</button>
+          </div>
+          <div id="new-error" class="mt-2 hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2"></div>
+        </form>`;
+    }
+    function input(id,label,value='',placeholder='',readonly=false){
+      if(placeholder===true){ readonly=true; placeholder=''; }
+      return `<label class=\"grid gap-1\"><span class=\"text-xs text-slate-500\">${label}</span><input ${readonly?'readonly':''} name="${id}" value="${value}" placeholder="${placeholder}" class=\"border rounded-md px-3 py-2\"></label>`;
+    }
+    function wireNewForm(container){
+      const form = container.querySelector('#new-asset-form');
+      const error = container.querySelector('#new-error');
+      const btnCancel = container.querySelector('#btn-cancel');
+      btnCancel.addEventListener('click', ()=> container.innerHTML='');
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault(); error.classList.add('hidden'); error.textContent='';
+        if(!SHEET_API_URL){ error.textContent = 'SHEET_API_URL não definido. Configure o Web App no Apps Script.'; error.classList.remove('hidden'); return; }
+        const data = Object.fromEntries(new FormData(form).entries());
+        try{
+          const res = await fetch(SHEET_API_URL,{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'upsert', asset: data})});
+          const json = await res.json();
+          if(!json.ok) throw new Error(json.error||'Falha ao gravar');
+          store.assets = [data, ...(store.assets||[])];
+          container.innerHTML='';
+          render();
+        }catch(err){ error.textContent = err.message||String(err); error.classList.remove('hidden'); }
+      });
+    }
+
+    // ======= Search & Router bindings =======
+    document.getElementById('search').addEventListener('input', (e)=>{ store.query = e.target.value; render(); });
+    window.addEventListener('hashchange', ()=>{ store.route = parseRoute(); render(); });
+
+    // ======= Self-tests (dev) =======
+    (function runSelfTests(){
+      try {
+        console.assert(toDisplayDate('2025-08-31') === '31/08/2025', 'toDisplayDate ISO→PT');
+        console.assert(toDisplayDate('01/09/2025') === '01/09/2025', 'toDisplayDate passthrough');
+        console.assert(parseToDate('31/12/2025') instanceof Date, 'parse DD/MM/AAAA');
+        console.assert(parseToDate('2025-12-31') instanceof Date, 'parse ISO');
+        const alerts = computeAlerts({ proxima_manutencao: '01/01/2000', inspecao: '01/01/2099', seguro: '01/01/2000', motivo_alerta: '' });
+        console.assert(alerts.some(x=>x.key==='proxima_manutencao'), 'alert manutenção');
+        console.assert(alerts.some(x=>x.key==='seguro'), 'alert seguro');
+        console.assert(Array.isArray(csvToObjects('a,b\n1,2\n')),'csv parser');
+      } catch (e) { console.warn('Self-tests falharam:', e); }
+    })();
+
+    // ======= Boot =======
+    (async function(){
+      await loadAssets();
+      store.route = parseRoute();
+      render();
+    })();
+  </script>
+
+  <!-- ==========================
+       Apps Script — Web App (upsert) e alertas por email diário
+       1) Extensões → Apps Script → colar este código.
+       2) Implantar → Implementar como aplicativo da Web → Acesso: "Qualquer pessoa com o link" (copiar URL para SHEET_API_URL)
+       3) Em "Acionadores", criar um acionador temporal DIÁRIO para sendGarageAlertsDaily (ex.: 08:00)
+  ==========================
+  function toISO(d) { // DD/MM/AAAA -> YYYY-MM-DD
+    if (!d) return '';
+    var p = d.split('/'); if (p.length!==3) return d;
+    return p[2] + '-' + ('0'+p[1]).slice(-2) + '-' + ('0'+p[0]).slice(-2);
+  }
+  function doPost(e){
+    var body = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActive();
+    var sh = ss.getActiveSheet();
+    var header = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+    var map = {}; header.forEach(function(h,i){ map[h.toString().toLowerCase()] = i+1; });
+    if(body.action==='upsert'){
+      var a = body.asset || {};
+      ['proxima_manutencao','inspecao','seguro'].forEach(function(k){ if (a[k] && a[k].indexOf('/')>0) a[k] = toISO(a[k]); });
+      var id = (a.id||'').toString();
+      if (!id) return respond({ok:false, error:'id em falta'});
+      var data = sh.getDataRange().getValues();
+      var row = -1;
+      for (var i=1;i<data.length;i++){ if ((data[i][0]||'').toString()===id){ row = i+1; break; } }
+      if (row===-1){ row = sh.getLastRow()+1; }
+      function set(col, val){ if (map[col]) sh.getRange(row, map[col]).setValue(val||''); }
+      Object.keys(a).forEach(function(k){ set(k.toLowerCase(), a[k]); });
+      return respond({ok:true, row:row});
+    }
+    return respond({ok:false, error:'Ação inválida'});
+  }
+  function respond(obj){
+    return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+  }
+  const NOTIFY_EMAIL = "antoniobarroso78@gmail.com";
+  function parseISOorPT(d){ if (!d) return null; if (typeof d === 'string' && d.indexOf('/')>0){ var p = d.split('/'); return new Date(+p[2], +p[1]-1, +p[0]); } return new Date(d); }
+  function formatPT(date){ var dd=('0'+date.getDate()).slice(-2), mm=('0'+(date.getMonth()+1)).slice(-2), yyyy=date.getFullYear(); return dd+'/'+mm+'/'+yyyy; }
+  function sendGarageAlertsDaily(){
+    var sh = SpreadsheetApp.getActive().getActiveSheet();
+    var data = sh.getDataRange().getValues(); if (data.length<2) return;
+    var header = data[0].map(function(h){return (h||'').toString().toLowerCase();});
+    function col(name){ return header.indexOf(name); }
+    var ci = { id: col('id'), nome: col('nome'), manut: col('proxima_manutencao'), insp: col('inspecao'), seg: col('seguro') };
+    var today = new Date(); today.setHours(0,0,0,0);
+    var lines = [];
+    for (var i=1;i<data.length;i++){
+      var r = data[i];
+      var nome = r[ci.nome]||('Ativo '+r[ci.id]);
+      var itens = [];
+      var m=parseISOorPT(r[ci.manut]), in_=parseISOorPT(r[ci.insp]), sg=parseISOorPT(r[ci.seg]);
+      function check(label, dt){ if (!dt) return; var d=new Date(dt); d.setHours(0,0,0,0); if (d<=today) itens.push(label+': '+formatPT(d)); }
+      check('Manutenção', m); check('Inspeção', in_); check('Seguro', sg);
+      if (itens.length) lines.push('• '+nome+' — '+itens.join(' | '));
+    }
+    if (!lines.length) return;
+    var body = 'Alertas de garagem (datas vencidas até hoje)\n\n'+lines.join('\n');
+    MailApp.sendEmail(NOTIFY_EMAIL, 'Alertas — Gestão de Garagem', body);
+  }
+  -->
+</body>
+</html>
