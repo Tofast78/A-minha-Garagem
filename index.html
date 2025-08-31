@@ -38,42 +38,7 @@
   </header>
 
   <!-- Hero / Controls -->
-  <section class="border-b bg-gradient-to-r from-slate-50 to-slate-100">
-    <div class="max-w-7xl mx-auto px-4 py-6">
-      <div class="grid gap-4 md:grid-cols-6 items-end">
-        <div class="md:col-span-2">
-          <h1 class="text-2xl font-semibold">A tua garagem, organizada</h1>
-          <p class="text-slate-600 text-sm mt-1">Lista moderna com pesquisa, filtros e detalhes rápidos. Datas em <strong>DD/MM/AAAA</strong>.</p>
-        </div>
-        <div class="md:col-span-4 grid sm:grid-cols-2 md:grid-cols-4 gap-3">
-          <div>
-            <label class="text-xs text-slate-500">Categoria</label>
-            <select id="fCategoria" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Todas</option></select>
-          </div>
-          <div>
-            <label class="text-xs text-slate-500">Estado</label>
-            <select id="fEstado" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Todos</option><option>Operacional</option><option>Oficina</option><option>Reserva</option><option>Inativo</option></select>
-          </div>
-          <div>
-            <label class="text-xs text-slate-500">Ordenar por</label>
-            <select id="fSort" class="w-full border rounded-lg px-3 py-2 text-sm">
-              <option value="nome">Nome (A–Z)</option>
-              <option value="matricula">Matrícula (A–Z)</option>
-              <option value="prox">Próx. Manutenção (mais cedo)</option>
-            </select>
-          </div>
-          <div class="flex gap-2 items-end">
-            <button id="btnClear" class="btn bg-white">Limpar</button>
-            <div class="flex md:hidden items-center gap-2 ml-auto">
-              <span class="text-slate-500">🔎</span>
-              <input id="q-m" class="w-40 border rounded-lg px-3 py-2 text-sm" placeholder="Pesquisar..." />
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="notice" class="hidden mt-4 text-sm rounded-lg border p-3"></div>
-    </div>
-  </section>
+  
 
   <!-- Grid -->
   <main class="max-w-7xl mx-auto px-4 py-6">
@@ -231,7 +196,7 @@
       return { id, nome, foto1, foto2, categoria, matricula, km, estado, prox, insp, seg, preco, obs };
     }
 
-    const state = { data:[], filtered:[], role:'user', q:'', fCat:'', fEst:'', fSort:'nome' };
+    const state = { data:[], filtered:[], role:'user', q:'' };
 
     function showNotice(type, msg){
       const el=document.getElementById('notice');
@@ -242,18 +207,11 @@
 
     function applyFilters(){
       const q = state.q.toLowerCase();
-      let arr = state.data.filter(it => [it.nome,it.matricula,it.categoria].some(v => (v||'').toLowerCase().includes(q)));
-      if(state.fCat) arr = arr.filter(it => (it.categoria||'') === state.fCat);
-      if(state.fEst) arr = arr.filter(it => (it.estado||'') === state.fEst);
-      arr.sort(comp[state.fSort] || comp.nome);
-      state.filtered = arr;
+      state.filtered = state.data.filter(it => [it.nome,it.matricula,it.categoria].some(v => (v||'').toLowerCase().includes(q)));
       render();
     }
 
-    function populateFilters(){
-      const cats = Array.from(new Set(state.data.map(it=>it.categoria).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt'));
-      const sel = document.getElementById('fCategoria');
-      sel.innerHTML = '<option value="">Todas</option>' + cats.map(c=>`<option>${c}</option>`).join('');
+    function populateFilters(){ /* filtros removidos */ }</option>`).join('');
     }
 
     function render(){
@@ -336,11 +294,11 @@
 
     // ====== Events ======
     document.getElementById('q').addEventListener('input', (e)=>{ state.q = e.target.value; applyFilters(); });
-    document.getElementById('q-m').addEventListener('input', (e)=>{ state.q = e.target.value; applyFilters(); });
-    document.getElementById('fCategoria').addEventListener('change', (e)=>{ state.fCat = e.target.value; applyFilters(); });
-    document.getElementById('fEstado').addEventListener('change', (e)=>{ state.fEst = e.target.value; applyFilters(); });
-    document.getElementById('fSort').addEventListener('change', (e)=>{ state.fSort = e.target.value; applyFilters(); });
-    document.getElementById('btnClear').addEventListener('click', ()=>{ state.q=''; state.fCat=''; state.fEst=''; state.fSort='nome'; document.getElementById('q').value=''; document.getElementById('q-m').value=''; document.getElementById('fCategoria').value=''; document.getElementById('fEstado').value=''; document.getElementById('fSort').value='nome'; applyFilters(); });
+    (function(){const el=document.getElementById('q-m'); if(!el) return; el.addEventListener('input', (e)=>{ state.q = e.target.value; applyFilters(); });
+    (function(){const el=document.getElementById('fCategoria'); if(!el) return; el.addEventListener('change', (e)=>{ state.fCat = e.target.value; applyFilters(); });
+    (function(){const el=document.getElementById('fEstado'); if(!el) return; el.addEventListener('change', (e)=>{ state.fEst = e.target.value; applyFilters(); });
+    (function(){const el=document.getElementById('fSort'); if(!el) return; el.addEventListener('change', (e)=>{ state.fSort = e.target.value; applyFilters(); });
+    (function(){const el=document.getElementById('btnClear'); if(!el) return; el.addEventListener('click', ()=>{ state.q=''; state.fCat=''; state.fEst=''; state.fSort='nome'; document.getElementById('q').value=''; document.getElementById('q-m').value=''; document.getElementById('fCategoria').value=''; document.getElementById('fEstado').value=''; document.getElementById('fSort').value='nome'; applyFilters(); });
 
     document.getElementById('role').addEventListener('change', (e)=>{
       if(e.target.value==='admin'){
