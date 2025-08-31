@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .card:hover{ box-shadow: 0 8px 30px rgba(2,6,23,.08) }
+    img{ max-width:100%; height:auto; display:block; }
   </style>
 </head>
 <body class="min-h-screen bg-gradient-to-b from-white to-slate-50 text-slate-900">
@@ -84,15 +85,13 @@
   </dialog>
 
   <script>
-    // ======= CONFIG (apenas CSV para máxima simplicidade) =======
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRF0MjiPepVk_w5EjX1F9ZdIjWqUMAW-h-nXUSBRQIWXRIQ3QQ00ckVT58MNnQsuPRJgF7HuzfnnbSW/pub?gid=0&single=true&output=csv";
-    const ADMIN_PASS = "775500"; // mostra valor de compra
+    const ADMIN_PASS = "775500";
 
-    // ======= Utils =======
     const parseDate = (s)=>{ if(!s) return null; if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){ const [d,m,y]=s.split('/').map(Number); return new Date(y,m-1,d); } if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); } const d=new Date(s); return isNaN(+d)?null:d; };
     const addMonths = (d,m)=>{ if(!d) return null; const x=new Date(d); const day=x.getDate(); x.setMonth(x.getMonth()+m); if(x.getDate()<day) x.setDate(0); return x; };
     const fmt = (d)=> d? String(d.getDate()).padStart(2,'0')+"/"+String(d.getMonth()+1).padStart(2,'0')+"/"+d.getFullYear() : '';
-    const toNum = (v)=>{ const n=Number(String(v||'').replace(/[^0-9.,-]/g,'').replace(/\.(?=.*\.)/g,'').replace(',', '.')); return isFinite(n)?n:null; };
+    const toNum = (v)=>{ const n=Number(String(v||'').replace(/[^0-9A-Za-z:/.?&%#=_-]/g,'')); return isFinite(n)?n:null; };
 
     function csvToObjects(csv){
       const rows=[]; let i=0, f='', q=false, r=[];
@@ -109,8 +108,8 @@
       const marca = pick(row,'marca');
       const modelo = pick(row,'modelo');
       const nome = pick(row,'nome','viatura') || [marca,modelo].filter(Boolean).join(' ') || `Viatura ${i+1}`;
-      const foto1 = pick(row,'foto_url','foto','photo','foto1','foto 1');
-      const foto2 = pick(row,'foto2','foto 2');
+      const foto1 = pick(row,'foto_url','foto','photo','foto1','foto 1','imagem','imagem 1');
+      const foto2 = pick(row,'foto2','foto 2','imagem2','imagem 2');
       const categoria = pick(row,'categoria','tipo');
       const matricula = pick(row,'matricula','matrícula');
       const km = pick(row,'km','km da ultima revisão','km última revisão');
@@ -125,7 +124,6 @@
       return { id, nome, foto1, foto2, categoria, matricula, km, estado, prox, insp, seg, preco, obs };
     }
 
-    // ======= Estado & Render =======
     const state = { data:[], filtered:[], role:'user' };
 
     function showNotice(type, msg){
@@ -175,7 +173,6 @@
       dlg.showModal();
     }
 
-    // ======= Boot =======
     async function load(){
       hideNotice();
       document.getElementById('count').textContent = 'a carregar…';
@@ -190,12 +187,11 @@
         showNotice('ok', `Fonte ligada ✅ (${rows.length} linhas)`);
         render();
       }catch(err){
-        showNotice('err', 'Não consegui ler a folha CSV. Verifica se está publicada e acessível. Detalhe: '+ (err.message||err));
+        showNotice('err', 'Não consegui ler a folha CSV. Detalhe: '+ (err.message||err));
         state.data=[]; state.filtered=[]; render();
       }
     }
 
-    // ======= UI =======
     document.getElementById('q').addEventListener('input', (e)=>{
       const v = e.target.value.toLowerCase();
       state.filtered = state.data.filter(it=> [it.nome,it.matricula,it.categoria].some(x=> (x||'').toLowerCase().includes(v)) );
@@ -214,4 +210,3 @@
     load();
   </script>
 </body>
-</html>
