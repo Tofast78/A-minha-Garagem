@@ -6,20 +6,28 @@
   <title>Catálogo de Viaturas</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .card:hover{ box-shadow: 0 8px 30px rgba(2,6,23,.08) }
+    .card:hover{ box-shadow: 0 10px 35px rgba(2,6,23,.08) }
+    .btn{ @apply inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm; }
   </style>
 </head>
 <body class="min-h-screen bg-gradient-to-b from-white to-slate-50 text-slate-900">
-  <header class="sticky top-0 z-40 bg-white/70 backdrop-blur border-b">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-      <span class="text-2xl">🚗</span>
-      <span class="text-xl font-semibold">Catálogo de Viaturas</span>
+  <!-- Header -->
+  <header class="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+      <a class="flex items-center gap-3" href="#/">
+        <span id="brandLogoWrap" class="grid place-items-center w-10 h-10 rounded-xl bg-slate-900 text-white overflow-hidden">
+          <span id="brandEmoji" class="text-lg">🚗</span>
+          <img id="brandLogo" alt="Logo" class="w-full h-full object-cover hidden" />
+        </span>
+        <span id="brandTitle" class="text-xl font-semibold">Catálogo de Viaturas</span>
+      </a>
       <span id="count" class="text-sm text-slate-500"></span>
-      <div class="ml-auto flex items-center gap-2 w-full max-w-md">
+      <div class="ml-auto hidden md:flex items-center gap-2 w-full max-w-md">
         <span class="text-slate-500">🔎</span>
-        <input id="q" class="w-full border rounded-md px-3 py-2 text-sm" placeholder="Procurar por nome, marca, matrícula..." />
+        <input id="q" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Procurar por nome, matrícula, categoria..." />
       </div>
       <div class="ml-3 flex items-center gap-2">
+        <button id="btnConfig" class="px-3 py-2 text-sm rounded-md border bg-white">⚙️ Configurar</button>
         <select id="role" class="border rounded-md px-2 py-1 text-sm">
           <option value="user" selected>Utilizador</option>
           <option value="admin">Admin</option>
@@ -29,52 +37,106 @@
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-6">
-    <div id="notice" class="hidden mb-4 text-sm rounded-lg border p-3"></div>
-    <div id="grid" class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"></div>
+  <!-- Hero / Controls -->
+  <section class="border-b bg-gradient-to-r from-slate-50 to-slate-100">
+    <div class="max-w-7xl mx-auto px-4 py-6">
+      <div class="grid gap-4 md:grid-cols-6 items-end">
+        <div class="md:col-span-2">
+          <h1 class="text-2xl font-semibold">A tua garagem, organizada</h1>
+          <p class="text-slate-600 text-sm mt-1">Lista moderna com pesquisa, filtros e detalhes rápidos. Datas em <strong>DD/MM/AAAA</strong>.</p>
+        </div>
+        <div class="md:col-span-4 grid sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <label class="text-xs text-slate-500">Categoria</label>
+            <select id="fCategoria" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Todas</option></select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-500">Estado</label>
+            <select id="fEstado" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Todos</option><option>Operacional</option><option>Oficina</option><option>Reserva</option><option>Inativo</option></select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-500">Ordenar por</label>
+            <select id="fSort" class="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="nome">Nome (A–Z)</option>
+              <option value="matricula">Matrícula (A–Z)</option>
+              <option value="prox">Próx. Manutenção (mais cedo)</option>
+            </select>
+          </div>
+          <div class="flex gap-2 items-end">
+            <button id="btnClear" class="btn bg-white">Limpar</button>
+            <div class="flex md:hidden items-center gap-2 ml-auto">
+              <span class="text-slate-500">🔎</span>
+              <input id="q-m" class="w-40 border rounded-lg px-3 py-2 text-sm" placeholder="Pesquisar..." />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="notice" class="hidden mt-4 text-sm rounded-lg border p-3"></div>
+    </div>
+  </section>
+
+  <!-- Grid -->
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <div id="grid" class="grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"></div>
+    <div id="empty" class="hidden text-center text-slate-600 py-20">😕 Sem resultados para os filtros atuais.</div>
   </main>
 
+  <!-- Card Template -->
   <template id="card-tpl">
-    <div class="card overflow-hidden rounded-xl border bg-white">
+    <div class="card overflow-hidden rounded-2xl border bg-white">
       <a class="block" data-link>
-        <div class="aspect-video bg-slate-100 flex items-center justify-center overflow-hidden" data-figure>
-          <div class="text-slate-400 text-sm">🖼️ Sem foto</div>
+        <div class="relative aspect-video bg-slate-100 overflow-hidden" data-figure>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+          <div class="grid place-items-center h-full text-slate-400 text-sm">🖼️ Sem foto</div>
+          <span class="absolute left-2 top-2 text-[11px] px-2 py-0.5 rounded-full bg-white/90 border" data-chip-matricula></span>
         </div>
       </a>
-      <div class="p-3 border-t">
-        <div class="text-base font-medium flex items-center gap-2">
+      <div class="p-4 border-t">
+        <div class="text-base font-semibold flex items-center gap-2">
           <span class="truncate" data-nome></span>
-          <span class="ml-auto text-xs px-2 py-0.5 rounded-full bg-slate-50 text-slate-700 border border-slate-200" data-matricula></span>
+          <span class="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-slate-50 text-slate-700 border border-slate-200" data-chip-categoria></span>
         </div>
         <div class="mt-2 text-sm text-slate-600 flex justify-between">
-          <span class="truncate" data-categoria></span>
+          <span>Próx. manutenção</span>
           <span class="font-medium" data-proxmanut></span>
         </div>
-        <div class="text-sm" data-preco style="display:none"></div>
+        <div class="mt-2 text-sm hidden" data-preco></div>
+        <div class="mt-3 flex justify-end">
+          <button class="btn bg-slate-900 text-white" data-cta>Ver detalhes</button>
+        </div>
       </div>
     </div>
   </template>
 
-  <dialog id="dlg" class="rounded-xl border p-0 w-[min(900px,95vw)]">
-    <div class="p-3 border-b flex items-center justify-between">
-      <div class="text-lg font-semibold" id="dlg-title"></div>
-      <button id="dlg-close" class="px-2 py-1 text-sm rounded-md border">Fechar</button>
+  <!-- Dialog -->
+  <dialog id="dlg" class="rounded-2xl border p-0 w-[min(1000px,95vw)] overflow-hidden">
+    <div class="p-4 border-b flex items-center justify-between bg-white">
+      <div class="flex items-center gap-3">
+        <span class="grid place-items-center w-9 h-9 rounded-lg bg-slate-900 text-white">🚘</span>
+        <div>
+          <div class="text-lg font-semibold" id="dlg-title"></div>
+          <div class="text-xs text-slate-500" id="dlg-sub"></div>
+        </div>
+      </div>
+      <button id="dlg-close" class="btn bg-white">Fechar</button>
     </div>
     <div class="grid md:grid-cols-5 gap-0">
       <div class="md:col-span-3 bg-slate-100">
         <div class="aspect-video overflow-hidden">
           <img id="dlg-main" class="w-full h-full object-cover" alt="Foto principal" />
         </div>
-        <div class="p-2 border-t flex gap-2" id="dlg-thumbs"></div>
+        <div class="p-3 border-t flex gap-2 flex-wrap" id="dlg-thumbs"></div>
       </div>
-      <div class="md:col-span-2 p-4 grid gap-2 text-sm">
-        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Matrícula</div><div id="dlg-matricula" class="font-medium"></div></div>
-        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Categoria</div><div id="dlg-categoria" class="font-medium"></div></div>
-        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Próx. Manutenção</div><div id="dlg-prox" class="font-medium"></div></div>
-        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Inspeção</div><div id="dlg-insp" class="font-medium"></div></div>
-        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Seguro</div><div id="dlg-seg" class="font-medium"></div></div>
-        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">KM</div><div id="dlg-km" class="font-medium"></div></div>
-        <div class="hidden flex justify-between border-b pb-1" id="dlg-preco-row"><div class="text-slate-500">Valor compra</div><div id="dlg-preco" class="font-semibold"></div></div>
+      <div class="md:col-span-2 p-5 grid gap-3 text-sm bg-white">
+        <div class="grid gap-2">
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Matrícula</div><div id="dlg-matricula" class="font-medium"></div></div>
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Categoria</div><div id="dlg-categoria" class="font-medium"></div></div>
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Próx. Manutenção</div><div id="dlg-prox" class="font-medium"></div></div>
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Inspeção</div><div id="dlg-insp" class="font-medium"></div></div>
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Seguro</div><div id="dlg-seg" class="font-medium"></div></div>
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">KM</div><div id="dlg-km" class="font-medium"></div></div>
+          <div class="hidden flex justify-between border-b pb-1" id="dlg-preco-row"><div class="text-slate-500">Valor compra</div><div id="dlg-preco" class="font-semibold"></div></div>
+        </div>
         <div>
           <div class="text-slate-500">Observações</div>
           <div id="dlg-obs"></div>
@@ -83,10 +145,51 @@
     </div>
   </dialog>
 
+  <!-- Config Dialog -->
+  <dialog id="cfg" class="rounded-2xl border p-0 w-[min(720px,95vw)] overflow-hidden">
+    <form id="cfgForm" class="bg-white">
+      <div class="p-4 border-b flex items-center justify-between">
+        <div class="text-lg font-semibold">Configurações de Branding</div>
+        <div class="flex gap-2">
+          <button type="button" id="cfgReset" class="px-3 py-2 text-sm rounded-md border bg-white">Repor</button>
+          <button type="button" id="cfgClose" class="px-3 py-2 text-sm rounded-md border bg-white">Fechar</button>
+          <button type="submit" class="px-3 py-2 text-sm rounded-md border bg-slate-900 text-white">Guardar</button>
+        </div>
+      </div>
+      <div class="p-5 grid gap-4 md:grid-cols-5">
+        <div class="md:col-span-3 grid gap-3">
+          <label class="grid gap-1">
+            <span class="text-xs text-slate-500">Nome da página</span>
+            <input id="cfgTitle" class="border rounded-lg px-3 py-2" placeholder="Ex.: Frota XYZ" />
+          </label>
+          <label class="grid gap-1">
+            <span class="text-xs text-slate-500">URL do logo (PNG/JPG/SVG)</span>
+            <input id="cfgLogo" class="border rounded-lg px-3 py-2" placeholder="https://.../logo.png" />
+          </label>
+          <p class="text-xs text-slate-500">Dica: podes usar imagens do GitHub (raw.githubusercontent.com ou cdn.jsdelivr.net) ou Google Drive com partilha pública.</p>
+        </div>
+        <div class="md:col-span-2">
+          <div class="text-xs text-slate-500 mb-2">Pré‑visualização</div>
+          <div class="border rounded-xl p-4 flex items-center gap-3">
+            <span class="grid place-items-center w-12 h-12 rounded-xl bg-slate-900 text-white overflow-hidden">
+              <img id="cfgPreviewLogo" class="w-full h-full object-cover hidden" alt="Preview logo"/>
+              <span id="cfgPreviewEmoji">🚗</span>
+            </span>
+            <div class="font-semibold" id="cfgPreviewTitle">Catálogo de Viaturas</div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
   <script>
+    // ====== Config ======
+    const LS_TITLE = 'GARAGEM_TITLE';
+    const LS_LOGO = 'GARAGEM_LOGO';
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRF0MjiPepVk_w5EjX1F9ZdIjWqUMAW-h-nXUSBRQIWXRIQ3QQ00ckVT58MNnQsuPRJgF7HuzfnnbSW/pub?output=csv";
     const ADMIN_PASS = "775500";
 
+    // ====== Utils ======
     const parseDate = (s)=>{ if(!s) return null; if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){ const [d,m,y]=s.split('/').map(Number); return new Date(y,m-1,d); } if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); } const d=new Date(s); return isNaN(+d)?null:d; };
     const addMonths = (d,m)=>{ if(!d) return null; const x=new Date(d); const day=x.getDate(); x.setMonth(x.getMonth()+m); if(x.getDate()<day) x.setDate(0); return x; };
     const fmt = (d)=> d? String(d.getDate()).padStart(2,'0')+"/"+String(d.getMonth()+1).padStart(2,'0')+"/"+d.getFullYear() : '';
@@ -102,6 +205,11 @@
     }
 
     const pick=(obj, ...names)=>{ for(const n of names){ const v=obj[n]; if(v && String(v).trim()!=='') return v; } return ''; };
+    const comp = {
+      nome:(a,b)=> a.nome.localeCompare(b.nome,'pt',{sensitivity:'base'}),
+      matricula:(a,b)=> (a.matricula||'').localeCompare(b.matricula||'','pt',{numeric:true}),
+      prox:(a,b)=>{ const pa=a.prox? parseDate(a.prox) : null; const pb=b.prox? parseDate(b.prox) : null; return (pa?+pa:Infinity) - (pb?+pb:Infinity); }
+    };
 
     function normalize(row, i){
       const marca = pick(row,'marca');
@@ -123,31 +231,51 @@
       return { id, nome, foto1, foto2, categoria, matricula, km, estado, prox, insp, seg, preco, obs };
     }
 
-    const state = { data:[], filtered:[], role:'user' };
+    const state = { data:[], filtered:[], role:'user', q:'', fCat:'', fEst:'', fSort:'nome' };
 
     function showNotice(type, msg){
       const el=document.getElementById('notice');
-      el.className = `mb-4 text-sm rounded-lg border p-3 ${type==='err'?'text-red-700 bg-red-50 border-red-200':'text-emerald-700 bg-emerald-50 border-emerald-200'}`;
+      el.className = `mt-4 text-sm rounded-lg border p-3 ${type==='err'?'text-red-700 bg-red-50 border-red-200':'text-emerald-700 bg-emerald-50 border-emerald-200'}`;
       el.textContent = msg; el.classList.remove('hidden');
     }
     function hideNotice(){ document.getElementById('notice').classList.add('hidden'); }
 
+    function applyFilters(){
+      const q = state.q.toLowerCase();
+      let arr = state.data.filter(it => [it.nome,it.matricula,it.categoria].some(v => (v||'').toLowerCase().includes(q)));
+      if(state.fCat) arr = arr.filter(it => (it.categoria||'') === state.fCat);
+      if(state.fEst) arr = arr.filter(it => (it.estado||'') === state.fEst);
+      arr.sort(comp[state.fSort] || comp.nome);
+      state.filtered = arr;
+      render();
+    }
+
+    function populateFilters(){
+      const cats = Array.from(new Set(state.data.map(it=>it.categoria).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt'));
+      const sel = document.getElementById('fCategoria');
+      sel.innerHTML = '<option value="">Todas</option>' + cats.map(c=>`<option>${c}</option>`).join('');
+    }
+
     function render(){
       document.getElementById('count').textContent = `${state.filtered.length} viaturas`;
       const grid = document.getElementById('grid'); grid.innerHTML='';
+      const empty = document.getElementById('empty');
+      empty.classList.toggle('hidden', state.filtered.length!==0);
       const tpl = document.getElementById('card-tpl');
       for(const it of state.filtered){
         const node = tpl.content.cloneNode(true);
         const fig = node.querySelector('[data-figure]');
+        const chipMat = node.querySelector('[data-chip-matricula]');
+        const chipCat = node.querySelector('[data-chip-categoria]');
+        chipMat.textContent = it.matricula || '—';
+        chipCat.textContent = it.categoria || '—';
         if(it.foto1){ fig.innerHTML = `<img src="${it.foto1}" alt="${it.nome}" class="w-full h-full object-cover"/>`; }
         node.querySelector('[data-nome]').textContent = it.nome;
-        node.querySelector('[data-matricula]').textContent = it.matricula || '—';
-        node.querySelector('[data-categoria]').textContent = it.categoria || '—';
         node.querySelector('[data-proxmanut]').textContent = it.prox || '—';
         const preco = node.querySelector('[data-preco]');
-        if(state.role==='admin' && it.preco!=null){ preco.style.display='block'; preco.innerHTML = `Valor compra: <strong>€ ${Number(it.preco).toLocaleString('pt-PT')}</strong>`; }
-        const link = node.querySelector('[data-link]');
-        link.addEventListener('click',(e)=>{ e.preventDefault(); openDialog(it); });
+        if(state.role==='admin' && it.preco!=null){ preco.classList.remove('hidden'); preco.innerHTML = `Valor compra: <strong>€ ${Number(it.preco).toLocaleString('pt-PT')}</strong>`; }
+        node.querySelector('[data-cta]').addEventListener('click',(e)=>{ e.preventDefault(); openDialog(it); });
+        node.querySelector('[data-link]').addEventListener('click',(e)=>{ e.preventDefault(); openDialog(it); });
         grid.appendChild(node);
       }
     }
@@ -155,6 +283,7 @@
     function openDialog(it){
       const dlg=document.getElementById('dlg');
       document.getElementById('dlg-title').textContent = it.nome;
+      document.getElementById('dlg-sub').textContent = [it.categoria,it.matricula].filter(Boolean).join(' • ');
       document.getElementById('dlg-matricula').textContent = it.matricula||'—';
       document.getElementById('dlg-categoria').textContent = it.categoria||'—';
       document.getElementById('dlg-prox').textContent = it.prox||'—';
@@ -166,36 +295,53 @@
       else { rowPreco.classList.add('hidden'); }
       const thumbs = document.getElementById('dlg-thumbs'); thumbs.innerHTML='';
       const main = document.getElementById('dlg-main');
-      if(it.foto1){ main.src = it.foto1; const b1=document.createElement('button'); b1.className='border rounded overflow-hidden'; b1.innerHTML=`<img src="${it.foto1}" class="w-20 h-14 object-cover">`; b1.onclick=()=> main.src=it.foto1; thumbs.appendChild(b1);} else { main.removeAttribute('src'); }
-      if(it.foto2){ const b2=document.createElement('button'); b2.className='border rounded overflow-hidden'; b2.innerHTML=`<img src="${it.foto2}" class="w-20 h-14 object-cover">`; b2.onclick=()=> main.src=it.foto2; thumbs.appendChild(b2); }
+      if(it.foto1){ main.src = it.foto1; const b1=document.createElement('button'); b1.className='border rounded-lg overflow-hidden'; b1.innerHTML=`<img src="${it.foto1}" class="w-24 h-16 object-cover">`; b1.onclick=()=> main.src=it.foto1; thumbs.appendChild(b1);} else { main.removeAttribute('src'); }
+      if(it.foto2){ const b2=document.createElement('button'); b2.className='border rounded-lg overflow-hidden'; b2.innerHTML=`<img src="${it.foto2}" class="w-24 h-16 object-cover">`; b2.onclick=()=> main.src=it.foto2; thumbs.appendChild(b2); }
       document.getElementById('dlg-obs').textContent = it.obs || '—';
       dlg.showModal();
     }
 
     async function load(){
       hideNotice();
-      document.getElementById('count').textContent = 'a carregar…';
       try{
         const res = await fetch(CSV_URL + '&_cb=' + Date.now(), { cache:'no-store' });
         if(!res.ok) throw new Error('Falha HTTP '+res.status);
         const text = await res.text();
         const rows = csvToObjects(text);
         const norm = rows.map(normalize);
-        state.data = norm;
-        state.filtered = norm;
-        showNotice('ok', `Fonte ligada ✅ (${rows.length} linhas)`);
-        render();
-      }catch(err){
-        showNotice('err', 'Não consegui ler a folha CSV. Detalhe: '+ (err.message||err));
-        state.data=[]; state.filtered=[]; render();
-      }
+        state.data = norm; state.filtered = norm; populateFilters(); showNotice('ok', `Fonte ligada ✅ (${rows.length} linhas)`); render();
+      }catch(err){ showNotice('err', 'Não consegui ler a folha CSV. Detalhe: '+ (err.message||err)); state.data=[]; state.filtered=[]; render(); }
     }
 
-    document.getElementById('q').addEventListener('input', (e)=>{
-      const v = e.target.value.toLowerCase();
-      state.filtered = state.data.filter(it=> [it.nome,it.matricula,it.categoria].some(x=> (x||'').toLowerCase().includes(v)) );
-      render();
-    });
+    // ====== Branding helpers ======
+    function getBranding(){
+      const urlParams = new URLSearchParams(location.search);
+      const t = urlParams.get('title') || localStorage.getItem(LS_TITLE) || 'Catálogo de Viaturas';
+      const l = urlParams.get('logo') || localStorage.getItem(LS_LOGO) || '';
+      return { title:t, logo:l };
+    }
+    function applyBranding(){
+      const {title, logo} = getBranding();
+      const titleEl = document.getElementById('brandTitle');
+      const imgEl = document.getElementById('brandLogo');
+      const emojiEl = document.getElementById('brandEmoji');
+      titleEl.textContent = title || 'Catálogo de Viaturas';
+      if(logo){ imgEl.src = logo; imgEl.classList.remove('hidden'); emojiEl.classList.add('hidden'); }
+      else { imgEl.classList.add('hidden'); emojiEl.classList.remove('hidden'); }
+      // preview sync if dialog open
+      const pTitle=document.getElementById('cfgPreviewTitle'); if(pTitle) pTitle.textContent=titleEl.textContent;
+      const pLogo=document.getElementById('cfgPreviewLogo'); const pEmoji=document.getElementById('cfgPreviewEmoji');
+      if(pLogo){ if(logo){ pLogo.src=logo; pLogo.classList.remove('hidden'); pEmoji.classList.add('hidden'); } else { pLogo.classList.add('hidden'); pEmoji.classList.remove('hidden'); } }
+    }
+
+    // ====== Events ======
+    document.getElementById('q').addEventListener('input', (e)=>{ state.q = e.target.value; applyFilters(); });
+    document.getElementById('q-m').addEventListener('input', (e)=>{ state.q = e.target.value; applyFilters(); });
+    document.getElementById('fCategoria').addEventListener('change', (e)=>{ state.fCat = e.target.value; applyFilters(); });
+    document.getElementById('fEstado').addEventListener('change', (e)=>{ state.fEst = e.target.value; applyFilters(); });
+    document.getElementById('fSort').addEventListener('change', (e)=>{ state.fSort = e.target.value; applyFilters(); });
+    document.getElementById('btnClear').addEventListener('click', ()=>{ state.q=''; state.fCat=''; state.fEst=''; state.fSort='nome'; document.getElementById('q').value=''; document.getElementById('q-m').value=''; document.getElementById('fCategoria').value=''; document.getElementById('fEstado').value=''; document.getElementById('fSort').value='nome'; applyFilters(); });
+
     document.getElementById('role').addEventListener('change', (e)=>{
       if(e.target.value==='admin'){
         const pwd = prompt('Password de admin:');
@@ -206,6 +352,48 @@
     });
     document.getElementById('dlg-close').addEventListener('click', ()=> document.getElementById('dlg').close());
 
+    // Config dialog wiring
+    const btnCfg = document.getElementById('btnConfig');
+    const cfg = document.getElementById('cfg');
+    const cfgForm = document.getElementById('cfgForm');
+    const cfgTitle = document.getElementById('cfgTitle');
+    const cfgLogo = document.getElementById('cfgLogo');
+    const cfgPrevTitle = document.getElementById('cfgPreviewTitle');
+    const cfgPrevLogo = document.getElementById('cfgPreviewLogo');
+    const cfgPrevEmoji = document.getElementById('cfgPreviewEmoji');
+    btnCfg.addEventListener('click', ()=>{
+      const b = getBranding();
+      cfgTitle.value = b.title || '';
+      cfgLogo.value = b.logo || '';
+      cfgPrevTitle.textContent = b.title || 'Catálogo de Viaturas';
+      if(b.logo){ cfgPrevLogo.src=b.logo; cfgPrevLogo.classList.remove('hidden'); cfgPrevEmoji.classList.add('hidden'); }
+      else { cfgPrevLogo.classList.add('hidden'); cfgPrevEmoji.classList.remove('hidden'); }
+      cfg.showModal();
+    });
+    document.getElementById('cfgClose').addEventListener('click', ()=> cfg.close());
+    document.getElementById('cfgReset').addEventListener('click', ()=>{
+      localStorage.removeItem(LS_TITLE);
+      localStorage.removeItem(LS_LOGO);
+      cfgTitle.value=''; cfgLogo.value='';
+      cfgPrevTitle.textContent = 'Catálogo de Viaturas';
+      cfgPrevLogo.classList.add('hidden'); cfgPrevEmoji.classList.remove('hidden');
+      applyBranding();
+    });
+    cfgTitle.addEventListener('input', ()=>{ cfgPrevTitle.textContent = cfgTitle.value || 'Catálogo de Viaturas'; });
+    cfgLogo.addEventListener('input', ()=>{
+      const v = cfgLogo.value.trim();
+      if(v){ cfgPrevLogo.src=v; cfgPrevLogo.classList.remove('hidden'); cfgPrevEmoji.classList.add('hidden'); }
+      else { cfgPrevLogo.classList.add('hidden'); cfgPrevEmoji.classList.remove('hidden'); }
+    });
+    cfgForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      localStorage.setItem(LS_TITLE, (cfgTitle.value||'').trim());
+      localStorage.setItem(LS_LOGO, (cfgLogo.value||'').trim());
+      applyBranding();
+      cfg.close();
+    });
+
+    // Boot
     load();
   </script>
 </body>
