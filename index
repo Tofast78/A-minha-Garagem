@@ -3,342 +3,215 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gestão de Garagem — Plug & Play</title>
+  <title>Catálogo de Viaturas</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>.card:hover{ box-shadow: 0 8px 30px rgba(2,6,23,.08) }</style>
+  <style>
+    .card:hover{ box-shadow: 0 8px 30px rgba(2,6,23,.08) }
+  </style>
 </head>
 <body class="min-h-screen bg-gradient-to-b from-white to-slate-50 text-slate-900">
   <header class="sticky top-0 z-40 bg-white/70 backdrop-blur border-b">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
       <span class="text-2xl">🚗</span>
-      <a href="#/" class="text-xl font-semibold">Gestão de Garagem</a>
-      <span id="header-count" class="text-sm text-slate-500"></span>
+      <span class="text-xl font-semibold">Catálogo de Viaturas</span>
+      <span id="count" class="text-sm text-slate-500"></span>
       <div class="ml-auto flex items-center gap-2 w-full max-w-md">
         <span class="text-slate-500">🔎</span>
-        <input id="search" class="w-full border rounded-md px-3 py-2 text-sm" placeholder="Procurar por nome, matrícula, categoria..." />
+        <input id="q" class="w-full border rounded-md px-3 py-2 text-sm" placeholder="Procurar por nome, marca, matrícula..." />
       </div>
       <div class="ml-3 flex items-center gap-2">
-        <label class="text-sm text-slate-600">Sessão:</label>
-        <select id="roleSelect" class="border rounded-md px-2 py-1 text-sm">
-          <option value="user">Utilizador</option>
+        <select id="role" class="border rounded-md px-2 py-1 text-sm">
+          <option value="user" selected>Utilizador</option>
           <option value="admin">Admin</option>
         </select>
-        <span id="roleBadge" class="text-xs px-2 py-1 rounded-full border">Utilizador</span>
-        <span id="sourceIndicator" class="ml-2 text-xs px-2 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200">⏳ A verificar…</span>
-        <button id="btnReload" class="text-xs px-2 py-1 rounded-md border bg-white">Recarregar</button>
+        <span id="badge" class="text-xs px-2 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200">Utilizador</span>
       </div>
     </div>
   </header>
 
-  <main id="app" class="max-w-7xl mx-auto px-4 py-6"></main>
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <div id="notice" class="hidden mb-4 text-sm rounded-lg border p-3"></div>
+    <div id="grid" class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"></div>
+  </main>
+
+  <template id="card-tpl">
+    <div class="card overflow-hidden rounded-xl border bg-white">
+      <a class="block" data-link>
+        <div class="aspect-video bg-slate-100 flex items-center justify-center overflow-hidden" data-figure>
+          <div class="text-slate-400 text-sm">🖼️ Sem foto</div>
+        </div>
+      </a>
+      <div class="p-3 border-t">
+        <div class="text-base font-medium flex items-center gap-2">
+          <span class="truncate" data-nome></span>
+          <span class="ml-auto text-xs px-2 py-0.5 rounded-full bg-slate-50 text-slate-700 border border-slate-200" data-matricula></span>
+        </div>
+        <div class="mt-2 text-sm text-slate-600 flex justify-between">
+          <span class="truncate" data-categoria></span>
+          <span class="font-medium" data-proxmanut></span>
+        </div>
+        <div class="text-sm" data-preco style="display:none"></div>
+      </div>
+    </div>
+  </template>
+
+  <dialog id="dlg" class="rounded-xl border p-0 w-[min(900px,95vw)]">
+    <div class="p-3 border-b flex items-center justify-between">
+      <div class="text-lg font-semibold" id="dlg-title"></div>
+      <button id="dlg-close" class="px-2 py-1 text-sm rounded-md border">Fechar</button>
+    </div>
+    <div class="grid md:grid-cols-5 gap-0">
+      <div class="md:col-span-3 bg-slate-100">
+        <div class="aspect-video overflow-hidden">
+          <img id="dlg-main" class="w-full h-full object-cover" alt="Foto principal" />
+        </div>
+        <div class="p-2 border-t flex gap-2" id="dlg-thumbs"></div>
+      </div>
+      <div class="md:col-span-2 p-4 grid gap-2 text-sm">
+        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Matrícula</div><div id="dlg-matricula" class="font-medium"></div></div>
+        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Categoria</div><div id="dlg-categoria" class="font-medium"></div></div>
+        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Próx. Manutenção</div><div id="dlg-prox" class="font-medium"></div></div>
+        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Inspeção</div><div id="dlg-insp" class="font-medium"></div></div>
+        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Seguro</div><div id="dlg-seg" class="font-medium"></div></div>
+        <div class="flex justify-between border-b pb-1"><div class="text-slate-500">KM</div><div id="dlg-km" class="font-medium"></div></div>
+        <div class="hidden flex justify-between border-b pb-1" id="dlg-preco-row"><div class="text-slate-500">Valor compra</div><div id="dlg-preco" class="font-semibold"></div></div>
+        <div>
+          <div class="text-slate-500">Observações</div>
+          <div id="dlg-obs"></div>
+        </div>
+      </div>
+    </div>
+  </dialog>
 
   <script>
-    // ================= Config =================
-    // Fonte publicada (CSV)
-    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRF0MjiPepVk_w5EjX1F9ZdIjWqUMAW-h-nXUSBRQIWXRIQ3QQ00ckVT58MNnQsuPRJgF7HuzfnnbSW/pub?output=csv";
-    // API opcional (Apps Script Web App). Podes definir no browser: setGarageApiUrl('https://script.google.com/macros/s/SEU_ID/exec')
-    let SHEET_API_URL = localStorage.getItem('GARAGEM_API_URL') || "";
-    const ADMIN_PASS = "775500"; // ver Valor compra
+    // ======= CONFIG (apenas CSV para máxima simplicidade) =======
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRF0MjiPepVk_w5EjX1F9ZdIjWqUMAW-h-nXUSBRQIWXRIQ3QQ00ckVT58MNnQsuPRJgF7HuzfnnbSW/pub?gid=0&single=true&output=csv";
+    const ADMIN_PASS = "775500"; // mostra valor de compra
 
-    // ================= Estado =================
-    const store = { assets:[], filtered:[], error:'', errorStatus:null, query:'', route:{page:'home',id:null}, role:'user', authed:false, sourceOk:false };
+    // ======= Utils =======
+    const parseDate = (s)=>{ if(!s) return null; if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){ const [d,m,y]=s.split('/').map(Number); return new Date(y,m-1,d); } if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); } const d=new Date(s); return isNaN(+d)?null:d; };
+    const addMonths = (d,m)=>{ if(!d) return null; const x=new Date(d); const day=x.getDate(); x.setMonth(x.getMonth()+m); if(x.getDate()<day) x.setDate(0); return x; };
+    const fmt = (d)=> d? String(d.getDate()).padStart(2,'0')+"/"+String(d.getMonth()+1).padStart(2,'0')+"/"+d.getFullYear() : '';
+    const toNum = (v)=>{ const n=Number(String(v||'').replace(/[^0-9.,-]/g,'').replace(/\.(?=.*\.)/g,'').replace(',', '.')); return isFinite(n)?n:null; };
 
-    // ================= Utils =================
-    const toInt = (s)=>{ const n=Number(String(s||'').replace(/[^0-9.,-]/g,'').replace(/\.(?=.*\.)/g,'').replace(',', '.')); return isFinite(n)? n : null; };
-    const parseToDate=(s)=>{ if(!s) return null; if(s instanceof Date) return isNaN(+s)?null:s; if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){const [d,m,y]=s.split('/').map(Number); return new Date(y,m-1,d);} if(/^\d{4}-\d{2}-\d{2}$/.test(s)){const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d);} const dt=new Date(s); return isNaN(+dt)?null:dt; };
-    const addMonths=(date,months)=>{ if(!date) return null; const d=new Date(date); const day=d.getDate(); d.setMonth(d.getMonth()+months); if(d.getDate()<day) d.setDate(0); return d; };
-    const fmtPT=(d)=> d? String(d.getDate()).padStart(2,'0')+"/"+String(d.getMonth()+1).padStart(2,'0')+"/"+d.getFullYear() : '';
-    const toDisplayDate=(v)=> fmtPT(parseToDate(v));
-
-    // Robust fetch helper (text/json)
-    async function fetchWithRetries(url, {tries=3, timeout=12000, asText=true}={}){
-      let lastErr; for(let i=0;i<tries;i++){
-        try{ const ctl=new AbortController(); const id=setTimeout(()=>ctl.abort(), timeout);
-          const res=await fetch(url+ (url.includes('?')?'&':'?') + '_cb=' + Date.now(), {signal: ctl.signal, cache:'no-store'});
-          clearTimeout(id);
-          if(!res.ok) throw Object.assign(new Error('HTTP '+res.status), {status:res.status});
-          return asText ? await res.text() : await res.json();
-        } catch(e){ lastErr=e; await new Promise(r=>setTimeout(r, 400*Math.pow(2,i))); }
-      }
-      throw lastErr;
+    function csvToObjects(csv){
+      const rows=[]; let i=0, f='', q=false, r=[];
+      while(i<csv.length){ const c=csv[i]; if(q){ if(c==='"'&&csv[i+1]==='"'){f+='"';i++;} else if(c==='"'){q=false;} else f+=c; } else { if(c==='"') q=true; else if(c===','){ r.push(f.trim()); f=''; } else if(c==='\n'){ r.push(f.trim()); rows.push(r); r=[]; f=''; } else if(c!=='\r'){ f+=c; } } i++; }
+      if(f.length||r.length){ r.push(f.trim()); rows.push(r); }
+      if(!rows.length) return [];
+      const header = rows[0].map(h=>h.toLowerCase());
+      return rows.slice(1).filter(r=>r.length && r.some(x=>x!=='')).map((r,i)=>{ const o={}; header.forEach((h,idx)=> o[h]=(r[idx]??'').trim()); return o; });
     }
 
-    // CSV → objetos
-    function csvToObjects(csv){ const rows=[]; let i=0, field='', inQ=false, row=[]; while(i<csv.length){ const c=csv[i]; if(inQ){ if(c==='"'&&csv[i+1]==='"'){field+='"';i++;} else if(c==='"'){inQ=false;} else field+=c; } else { if(c==='"') inQ=true; else if(c===','){row.push(field); field='';} else if(c==='\n'){row.push(field); rows.push(row); row=[]; field='';} else if(c!=='\r'){field+=c;} } i++; } if(field.length||row.length){row.push(field); rows.push(row);} if(!rows.length) return []; const header=rows[0].map(h=>String(h).trim().toLowerCase()); return rows.slice(1).filter(r=>r.length&&r.some(x=>String(x).trim()!=='')) .map(r=>{const o={}; header.forEach((h,idx)=>o[h]=(r[idx]??'').toString().trim()); return o;}); }
+    const pick=(obj, ...names)=>{ for(const n of names){ const v=obj[n]; if(v && String(v).trim()!=='') return v; } return ''; };
 
-    // ===== GViz JSONP (sem CORS) =====
-    function buildGvizUrlFromCsv(csvUrl){
-      // Converte /d/e/<PUBID>/pub?output=csv → /d/e/<PUBID>/gviz/tq?tqx=out:json
-      const m = csvUrl.match(/\/spreadsheets\/d\/e\/([^/]+)/);
-      if(!m) return null; return `https://docs.google.com/spreadsheets/d/e/${m[1]}/gviz/tq?tqx=out:json`;
-    }
-    function loadViaGvizJsonp(gvizUrl, timeoutMs=12000){
-      return new Promise((resolve, reject)=>{
-        const timer = setTimeout(()=>{ cleanup(); reject(Object.assign(new Error('Timeout GViz'),{status:408})); }, timeoutMs);
-        function cleanup(){ try{ clearTimeout(timer); script.remove(); }catch{}
-          try{ delete window.google; }catch{}
-        }
-        window.google = { visualization: { Query: { setResponse: (resp)=>{ try{
-          const cols = (resp.table.cols||[]).map(c=> (c.label||c.id||'').toString().trim().toLowerCase());
-          const rows = (resp.table.rows||[]).map(r=> (r.c||[]).map(c=> c? String(c.v??'').trim() : ''));
-          const out = rows.map(r=>{ const o={}; cols.forEach((h,i)=>o[h]=r[i]||''); return o; });
-          cleanup(); resolve(out);
-        }catch(e){ cleanup(); reject(e);} } } } };
-        const script = document.createElement('script');
-        script.src = gvizUrl + '&_cb=' + Date.now();
-        script.onerror = ()=>{ cleanup(); reject(Object.assign(new Error('Falha GViz'),{status:500})); };
-        document.head.appendChild(script);
-      });
+    function normalize(row, i){
+      const marca = pick(row,'marca');
+      const modelo = pick(row,'modelo');
+      const nome = pick(row,'nome','viatura') || [marca,modelo].filter(Boolean).join(' ') || `Viatura ${i+1}`;
+      const foto1 = pick(row,'foto_url','foto','photo','foto1','foto 1');
+      const foto2 = pick(row,'foto2','foto 2');
+      const categoria = pick(row,'categoria','tipo');
+      const matricula = pick(row,'matricula','matrícula');
+      const km = pick(row,'km','km da ultima revisão','km última revisão');
+      const estado = pick(row,'estado') || 'Operacional';
+      const dUlt = pick(row,'data da última revisão','data ultima revisão','data_ultima_revisao');
+      const prox = dUlt ? fmt(addMonths(parseDate(dUlt),12)) : '';
+      const insp = fmt(parseDate(pick(row,'inspecao','inspeção','data inspeção')));
+      const seg = fmt(parseDate(pick(row,'seguro','data seguro')));
+      const preco = toNum(pick(row,'valor compra','valor_compra','preço','preco'));
+      const obs = pick(row,'observacoes','observações') || pick(row,'descrição da última revisão','descricao_ultima_revisao');
+      const id = pick(row,'id') || String(i+1);
+      return { id, nome, foto1, foto2, categoria, matricula, km, estado, prox, insp, seg, preco, obs };
     }
 
-    // Normalização das colunas do Sheet → objeto do app
-    function normalizeRow(d, i){
-      const pick=(...names)=>{ for(const n of names){ if(d[n] && String(d[n]).trim()!=='') return d[n]; } return ''; };
-      const foto1 = pick('foto_url','foto','photo','foto1','foto 1');
-      const foto2 = pick('foto2','foto 2');
-      let nome = pick('nome','viatura'); if(!nome){ const marca=pick('marca'); const modelo=pick('modelo'); nome = (marca+ ' ' + modelo).trim() || `Ativo ${i+1}`; }
-      const matricula = pick('matricula','matrícula');
-      const categoria = pick('categoria','tipo');
-      const km = pick('km','km última revisão','km da ultima revisão');
-      const estado = pick('estado') || 'Operacional';
-      const dataUltRev = pick('data da última revisão','data ultima revisão','data_ultima_revisao');
-      const inspecao = pick('inspecao','inspeção','data inspeção');
-      const seguro = pick('seguro','data seguro');
-      const dataCompra = pick('data da compra','data_compra');
-      const valor_compra = toInt(pick('valor compra','valor_compra','preço','preco'));
-      const motivo_alerta = pick('motivo_alerta','motivo');
-      const observacoes = pick('observacoes','observações') || pick('descrição da última revisão','descricao_ultima_revisao') || (dataCompra?`Data da compra: ${toDisplayDate(dataCompra)}`:'');
-      const calcProx = dataUltRev ? addMonths(parseToDate(dataUltRev), 12) : null;
-      const id = pick('id') || String(i+1);
-      return { id, nome, foto_url: foto1, _foto2: foto2, categoria, matricula, km, estado, proxima_manutencao: calcProx? fmtPT(calcProx):'', inspecao: toDisplayDate(inspecao), seguro: toDisplayDate(seguro), valor_compra, motivo_alerta, observacoes };
+    // ======= Estado & Render =======
+    const state = { data:[], filtered:[], role:'user' };
+
+    function showNotice(type, msg){
+      const el=document.getElementById('notice');
+      el.className = `mb-4 text-sm rounded-lg border p-3 ${type==='err'?'text-red-700 bg-red-50 border-red-200':'text-emerald-700 bg-emerald-50 border-emerald-200'}`;
+      el.textContent = msg; el.classList.remove('hidden');
     }
+    function hideNotice(){ document.getElementById('notice').classList.add('hidden'); }
 
-    // ================= Leitura com ordem de robustez =================
-    async function loadAssets(){
-      const ind=document.getElementById('sourceIndicator'); if(ind){ ind.textContent='⏳ A verificar…'; ind.className='ml-2 text-xs px-2 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200'; }
-      try{
-        let rows=[]; let used='';
-        // 1) API JSON (Apps Script), se definida
-        if(SHEET_API_URL){
-          try{
-            const apiUrl = SHEET_API_URL + (SHEET_API_URL.includes('?')?'&':'?') + 'action=list';
-            const json = await fetchWithRetries(apiUrl, {tries:2, timeout:12000, asText:false});
-            if(json && json.ok && Array.isArray(json.rows)) { rows = json.rows; used='API'; }
-          }catch(e){ /* continua */ }
-        }
-        // 2) GViz JSONP (sem CORS)
-        if((!rows || rows.length===0)){
-          const gviz = buildGvizUrlFromCsv(SHEET_CSV_URL);
-          if(gviz){ try{ rows = await loadViaGvizJsonp(gviz); used='GViz'; }catch(e){ /* continua */ } }
-        }
-        // 3) CSV fetch
-        if((!rows || rows.length===0)){
-          const csv = await fetchWithRetries(SHEET_CSV_URL, {tries:3, timeout:12000, asText:true});
-          rows = csvToObjects(csv); used = 'CSV';
-        }
-        if(!rows || rows.length===0) throw Object.assign(new Error('Sem linhas — verifique se a folha está publicada ou acessível.'),{status:204});
-        store.assets = rows.map((d,i)=> normalizeRow(d,i));
-        store.sourceOk = true; store.error=''; store.errorStatus=null;
-        if(ind){ ind.textContent = 'Fonte ligada ✅ ('+used+')'; ind.className='ml-2 text-xs px-2 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200'; }
-      } catch(e){
-        store.assets = []; store.sourceOk=false; store.error=(e&&e.message)||String(e); store.errorStatus=e&&e.status;
-        if(ind){ const code = store.errorStatus? 'Erro '+store.errorStatus : 'Erro'; ind.textContent = code+' ❌'; ind.className='ml-2 text-xs px-2 py-1 rounded-full border bg-red-50 text-red-700 border-red-200'; }
-      }
-      render();
-    }
-
-    // ================= Router =================
-    function parseRoute(){ const hash=location.hash.slice(1)||'/'; if(hash.startsWith('/ativo/')){ const id=decodeURIComponent(hash.split('/')[2]||''); return {page:'detail', id}; } return {page:'home', id:null}; }
-
-    // ================= Render =================
     function render(){
-      const app=document.getElementById('app'); const count=document.getElementById('header-count'); const roleBadge=document.getElementById('roleBadge');
-      roleBadge.textContent = store.role==='admin' && store.authed ? 'Admin' : 'Utilizador';
-      roleBadge.className = 'text-xs px-2 py-1 rounded-full border ' + (store.role==='admin' && store.authed ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200');
-      count.textContent = `${(store.assets||[]).length} ativos`;
-
-      if(store.route.page==='home'){
-        const q = store.query.toLowerCase();
-        store.filtered = (store.assets||[]).filter(a => [a.nome,a.matricula,a.categoria,a.estado].filter(Boolean).some(v => String(v).toLowerCase().includes(q)));
-        app.innerHTML = `
-          ${(!store.sourceOk && store.error) ? `<div class="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">⚠️ ${store.error}</div>` : ''}
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold">Todos os ativos</h2>
-            <a class="text-sm underline" id="csv-model" download="modelo_garagem.csv">Modelo CSV</a>
-          </div>
-          <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4" id="grid"></div>
-        `;
-        const model='id,nome,foto_url,foto2,categoria,matricula,km,estado,data da última revisão,inspecao,seguro,valor compra,motivo_alerta,observacoes\n001,Veículo 001,,,Ligeiro,AA-00-ZZ,15000,Operacional,01/09/2024,01/10/2025,29/08/2025,15000,,Notas...\n';
-        document.getElementById('csv-model').href = `data:text/csv;charset=utf-8,${encodeURIComponent(model)}`;
-
-        const grid=document.getElementById('grid'); grid.innerHTML='';
-        for(const a of store.filtered){
-          const card=document.createElement('div'); card.className='card overflow-hidden rounded-xl border bg-white';
-          card.innerHTML = `
-            <a href=\"#/ativo/${encodeURIComponent(a.id)}\">
-              <div class=\"aspect-video bg-slate-100 flex items-center justify-center overflow-hidden\">
-                ${a.foto_url ? `<img src=\"${a.foto_url}\" alt=\"${a.nome}\" class=\"w-full h-full object-cover\"/>` : `<div class=\"text-slate-500 text-sm py-8\">🖼️ Sem foto</div>`}
-              </div>
-            </a>
-            <div class=\"p-3 border-t\">
-              <div class=\"text-base font-medium flex items-center gap-2\">
-                <span class=\"truncate\" title=\"${a.nome}\">${a.nome}</span>
-                <span class=\"ml-auto text-xs px-2 py-0.5 rounded-full bg-slate-50 text-slate-700 border border-slate-200\">${a.matricula||'—'}</span>
-              </div>
-              <div class=\"mt-2 text-sm text-slate-600 flex justify-between\"><span class=\"truncate\">${a.categoria||'—'}</span><span class=\"font-medium\">Próx. manutenção</span></div>
-              <div class=\"text-sm text-slate-900\">${a.proxima_manutencao||'—'}</div>
-              ${store.role==='admin' && store.authed && a.valor_compra!=null ? `<div class=\"text-sm text-slate-600 flex justify-between mt-1\"><span>Valor compra</span><span class=\"font-semibold\">€ ${Number(a.valor_compra).toLocaleString('pt-PT')}</span></div>` : ''}
-            </div>`;
-          grid.appendChild(card);
-        }
-      }
-
-      if(store.route.page==='detail'){
-        const a=(store.assets||[]).find(x=>String(x.id)===String(store.route.id));
-        if(!a){ app.innerHTML = `<div class="min-h-[50vh] grid place-items-center text-slate-600">Ativo não encontrado. <a href="#/" class="underline ml-2">Voltar</a></div>`; return; }
-        app.innerHTML=`
-          <div class="mb-4"><a href="#/" class="text-sm underline">← Voltar</a></div>
-          <div class="grid gap-6 md:grid-cols-3">
-            <div class="md:col-span-2 card rounded-xl border bg-white overflow-hidden">
-              <div class="bg-slate-100">
-                <div class="aspect-video overflow-hidden relative">
-                  ${a.foto_url ? `<img id="detail-main" src="${a.foto_url}" alt="${a.nome}" class="w-full h-full object-cover"/>` : `<div class="text-slate-500 text-sm py-8 grid place-items-center">🖼️ Sem foto</div>`}
-                </div>
-                ${(a._foto2) ? `
-                  <div class="p-2 border-t flex gap-2">
-                    <button class="thumb border rounded overflow-hidden"><img src="${a.foto_url}" alt="Foto 1" class="w-20 h-14 object-cover"></button>
-                    <button class="thumb border rounded overflow-hidden"><img src="${a._foto2}" alt="Foto 2" class="w-20 h-14 object-cover"></button>
-                  </div>` : ''}
-              </div>
-              <div class="p-4 border-t">
-                <h1 class="text-xl font-semibold">${a.nome}</h1>
-                <div class="mt-3 grid gap-2 text-sm">
-                  ${infoRow('Categoria', a.categoria)}
-                  ${infoRow('Matrícula', a.matricula)}
-                  ${infoRow('Próx. Manutenção', a.proxima_manutencao)}
-                  ${infoRow('Inspeção', a.inspecao)}
-                  ${infoRow('Seguro', a.seguro)}
-                  ${infoRow('Estado', a.estado)}
-                  ${infoRow('KM', a.km)}
-                  ${(store.role==='admin' && store.authed && a.valor_compra!=null) ? infoRow('Valor compra', '€ '+Number(a.valor_compra).toLocaleString('pt-PT')) : ''}
-                </div>
-                ${a.observacoes ? `<div class="mt-3"><div class="text-sm text-slate-500">Observações</div><div class="text-sm">${a.observacoes}</div></div>`:''}
-              </div>
-            </div>
-            <div class="grid gap-4">
-              <div class="card rounded-xl border bg-white">
-                <div class="p-4 border-b font-medium">Origem dos dados</div>
-                <div class="p-4 text-sm text-slate-600">
-                  <div>Leitura de Google Sheets com fallback (<strong>API / GViz / CSV</strong>). Datas em <strong>DD/MM/AAAA</strong>.</div>
-                </div>
-              </div>
-            </div>
-          </div>`;
-        const thumbs = app.querySelectorAll('.thumb img'); const main = app.querySelector('#detail-main'); thumbs.forEach(btn=>btn.addEventListener('click',()=>{ if(main && btn && btn.src) main.src = btn.src; }));
+      document.getElementById('count').textContent = `${state.filtered.length} viaturas`;
+      const grid = document.getElementById('grid'); grid.innerHTML='';
+      const tpl = document.getElementById('card-tpl');
+      for(const it of state.filtered){
+        const node = tpl.content.cloneNode(true);
+        const fig = node.querySelector('[data-figure]');
+        if(it.foto1){ fig.innerHTML = `<img src="${it.foto1}" alt="${it.nome}" class="w-full h-full object-cover"/>`; }
+        node.querySelector('[data-nome]').textContent = it.nome;
+        node.querySelector('[data-matricula]').textContent = it.matricula || '—';
+        node.querySelector('[data-categoria]').textContent = it.categoria || '—';
+        node.querySelector('[data-proxmanut]').textContent = it.prox || '—';
+        const preco = node.querySelector('[data-preco]');
+        if(state.role==='admin' && it.preco!=null){ preco.style.display='block'; preco.innerHTML = `Valor compra: <strong>€ ${Number(it.preco).toLocaleString('pt-PT')}</strong>`; }
+        const link = node.querySelector('[data-link]');
+        link.addEventListener('click',(e)=>{ e.preventDefault(); openDialog(it); });
+        grid.appendChild(node);
       }
     }
 
-    function infoRow(label,value){ return `<div class="flex items-center justify-between border-b pb-2"><div class="text-slate-500">${label}</div><div class="font-medium">${value||'—'}</div></div>`; }
+    function openDialog(it){
+      const dlg=document.getElementById('dlg');
+      document.getElementById('dlg-title').textContent = it.nome;
+      document.getElementById('dlg-matricula').textContent = it.matricula||'—';
+      document.getElementById('dlg-categoria').textContent = it.categoria||'—';
+      document.getElementById('dlg-prox').textContent = it.prox||'—';
+      document.getElementById('dlg-insp').textContent = it.insp||'—';
+      document.getElementById('dlg-seg').textContent = it.seg||'—';
+      document.getElementById('dlg-km').textContent = it.km||'—';
+      const rowPreco = document.getElementById('dlg-preco-row');
+      if(state.role==='admin' && it.preco!=null){ rowPreco.classList.remove('hidden'); document.getElementById('dlg-preco').textContent = '€ '+Number(it.preco).toLocaleString('pt-PT'); }
+      else { rowPreco.classList.add('hidden'); }
+      const thumbs = document.getElementById('dlg-thumbs'); thumbs.innerHTML='';
+      const main = document.getElementById('dlg-main');
+      if(it.foto1){ main.src = it.foto1; const b1=document.createElement('button'); b1.className='border rounded overflow-hidden'; b1.innerHTML=`<img src="${it.foto1}" class="w-20 h-14 object-cover">`; b1.onclick=()=> main.src=it.foto1; thumbs.appendChild(b1);} else { main.removeAttribute('src'); }
+      if(it.foto2){ const b2=document.createElement('button'); b2.className='border rounded overflow-hidden'; b2.innerHTML=`<img src="${it.foto2}" class="w-20 h-14 object-cover">`; b2.onclick=()=> main.src=it.foto2; thumbs.appendChild(b2); }
+      document.getElementById('dlg-obs').textContent = it.obs || '—';
+      dlg.showModal();
+    }
 
-    // ================= Events =================
-    document.getElementById('btnReload').addEventListener('click',()=> loadAssets());
-    document.getElementById('search').addEventListener('input',(e)=>{ store.query=e.target.value; render(); });
-    window.addEventListener('hashchange', ()=>{ store.route=parseRoute(); render(); });
-    const roleSelect = document.getElementById('roleSelect');
-    roleSelect.addEventListener('change', ()=>{
-      if(roleSelect.value==='admin'){
-        const pwd = prompt('Password de admin:');
-        if(pwd===ADMIN_PASS){ store.role='admin'; store.authed=true; }
-        else { alert('Password incorreta. A entrar como Utilizador.'); store.role='user'; store.authed=false; roleSelect.value='user'; }
-      } else { store.role='user'; store.authed=false; }
+    // ======= Boot =======
+    async function load(){
+      hideNotice();
+      document.getElementById('count').textContent = 'a carregar…';
+      try{
+        const res = await fetch(CSV_URL + '&_cb=' + Date.now(), { cache:'no-store' });
+        if(!res.ok) throw new Error('Falha HTTP '+res.status);
+        const text = await res.text();
+        const rows = csvToObjects(text);
+        const norm = rows.map(normalize);
+        state.data = norm;
+        state.filtered = norm;
+        showNotice('ok', `Fonte ligada ✅ (${rows.length} linhas)`);
+        render();
+      }catch(err){
+        showNotice('err', 'Não consegui ler a folha CSV. Verifica se está publicada e acessível. Detalhe: '+ (err.message||err));
+        state.data=[]; state.filtered=[]; render();
+      }
+    }
+
+    // ======= UI =======
+    document.getElementById('q').addEventListener('input', (e)=>{
+      const v = e.target.value.toLowerCase();
+      state.filtered = state.data.filter(it=> [it.nome,it.matricula,it.categoria].some(x=> (x||'').toLowerCase().includes(v)) );
       render();
     });
+    document.getElementById('role').addEventListener('change', (e)=>{
+      if(e.target.value==='admin'){
+        const pwd = prompt('Password de admin:');
+        if(pwd===ADMIN_PASS){ state.role='admin'; document.getElementById('badge').textContent='Admin'; document.getElementById('badge').className='text-xs px-2 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200'; }
+        else { alert('Password incorreta. Mantendo Utilizador.'); e.target.value='user'; state.role='user'; document.getElementById('badge').textContent='Utilizador'; document.getElementById('badge').className='text-xs px-2 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200'; }
+      }else{ state.role='user'; document.getElementById('badge').textContent='Utilizador'; document.getElementById('badge').className='text-xs px-2 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200'; }
+      render();
+    });
+    document.getElementById('dlg-close').addEventListener('click', ()=> document.getElementById('dlg').close());
 
-    // ================= Boot =================
-    (async function(){ await loadAssets(); store.route=parseRoute(); render(); })();
-
-    // Atalho para definir a URL da API sem editar o ficheiro
-    window.setGarageApiUrl = function(url){ try{ localStorage.setItem('GARAGEM_API_URL', url); SHEET_API_URL=url; alert('API definida: '+url); loadAssets(); }catch(e){ alert('Falhou guardar: '+e.message); } };
+    load();
   </script>
-  <!-- ==========================
-       Apps Script — Web App (Plug & Play)
-       Cola este código em Extensões > Apps Script na tua folha Google.
-       Publica como Aplicativo da Web (Quem tem o link).
-       ==========================
-  function asJson(obj){
-    return ContentService.createTextOutput(JSON.stringify(obj))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  function getSheet_(){
-    var ss = SpreadsheetApp.getActive();
-    var sh = ss.getActiveSheet(); // ou ss.getSheetByName('Viaturas')
-    return sh;
-  }
-
-  function normalizeHeader_(h){
-    return (h||'').toString().trim().toLowerCase();
-  }
-
-  function listRows_(){
-    var sh = getSheet_();
-    var rg = sh.getDataRange();
-    var values = rg.getValues();
-    if(values.length<2) return [];
-    var header = values[0].map(normalizeHeader_);
-    var rows = [];
-    for(var i=1;i<values.length;i++){
-      var r = values[i];
-      if(r.join('').trim()==='') continue;
-      var obj = {};
-      for(var c=0;c<header.length;c++){
-        obj[header[c]] = r[c];
-      }
-      rows.push(obj);
-    }
-    return rows;
-  }
-
-  function doGet(e){
-    try{
-      var action = (e && e.parameter && e.parameter.action)||'list';
-      if(action==='list'){
-        var rows = listRows_();
-        return asJson({ ok:true, rows: rows, count: rows.length });
-      }
-      return asJson({ ok:false, error:'Ação inválida' });
-    }catch(err){
-      return asJson({ ok:false, error: String(err) });
-    }
-  }
-
-  function doPost(e){
-    try{
-      var body = e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : {};
-      var action = body.action||'upsert';
-      if(action==='upsert'){
-        var sh = getSheet_();
-        var header = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(normalizeHeader_);
-        var hIndex = {}; header.forEach(function(h,i){ hIndex[h]=i; });
-        var a = body.asset||{}; // {id, nome, ...}
-        var id = (a.id||'').toString(); if(!id) return asJson({ok:false, error:'id em falta'});
-        // Procura linha pelo ID (assumindo coluna A = id)
-        var data = sh.getRange(2,1,Math.max(0,sh.getLastRow()-1), sh.getLastColumn()).getValues();
-        var row = -1;
-        for(var i=0;i<data.length;i++){ if((data[i][0]||'').toString()===id){ row = i+2; break; } }
-        if(row===-1) row = sh.getLastRow()+1;
-        // Escreve colunas que reconhece
-        Object.keys(a).forEach(function(k){
-          var col = hIndex[normalizeHeader_(k)];
-          if(col!=null){ sh.getRange(row, col+1).setValue(a[k]); }
-        });
-        return asJson({ ok:true, row: row });
-      }
-      return asJson({ ok:false, error:'Ação inválida' });
-    }catch(err){
-      return asJson({ ok:false, error: String(err) });
-    }
-  }
-  -->
 </body>
 </html>
