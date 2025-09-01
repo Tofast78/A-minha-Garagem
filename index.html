@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bem-vindo à tua garagem</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .card:hover{ box-shadow: 0 10px 35px rgba(2,6,23,.08) }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-white to-slate-50 text-slate-900 flex flex-col">
+  <!-- Welcome Page -->
+  <main class="flex-1 grid place-items-center p-6">
+    <div class="text-center max-w-lg">
+      <div class="mx-auto mb-6 w-24 h-24 rounded-2xl bg-slate-900 flex items-center justify-center overflow-hidden">
+        <span id="welcomeEmoji" class="text-4xl text-white">🚗</span>
+        <img id="welcomeLogo" alt="Logo" class="w-full h-full object-cover hidden" />
+      </div>
+      <h1 class="text-3xl font-bold mb-4">Bem-vindo à tua garagem</h1>
+      <p class="text-slate-600 mb-8">Acede ao catálogo de viaturas com pesquisa, detalhes e gestão simples.</p>
+      <a href="catalogo.html" class="inline-block px-6 py-3 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 transition">Entrar</a>
+    </div>
+  </main>
+</body>
+</html>
