@@ -21,7 +21,7 @@
         <span id="brandTitle" class="text-xl font-semibold">Catálogo de Viaturas</span>
       </a>
       <span id="count" class="text-sm text-slate-500"></span>
-      <div class="ml-auto hidden md:flex items-center gap-2 w-full max-w-md">
+      <div class="ml-auto flex items-center gap-2 w-full max-w-md">
         <span class="text-slate-500">🔎</span>
         <input id="q" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Procurar por nome, matrícula, categoria..." />
       </div>
@@ -36,48 +36,10 @@
     </div>
   </header>
 
-  <!-- Hero / Controls -->
-  <section class="border-b bg-gradient-to-r from-slate-50 to-slate-100">
-    <div class="max-w-7xl mx-auto px-4 py-6">
-      <div class="grid gap-4 md:grid-cols-6 items-end">
-        <div class="md:col-span-2">
-          <h1 class="text-2xl font-semibold">A tua garagem, organizada</h1>
-          <p class="text-slate-600 text-sm mt-1">Lista moderna com pesquisa, filtros e detalhes rápidos. Datas em <strong>DD/MM/AAAA</strong>.</p>
-        </div>
-        <div class="md:col-span-4 grid sm:grid-cols-2 md:grid-cols-4 gap-3">
-          <div>
-            <label class="text-xs text-slate-500">Categoria</label>
-            <select id="fCategoria" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Todas</option></select>
-          </div>
-          <div>
-            <label class="text-xs text-slate-500">Estado</label>
-            <select id="fEstado" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Todos</option><option>Operacional</option><option>Oficina</option><option>Reserva</option><option>Inativo</option></select>
-          </div>
-          <div>
-            <label class="text-xs text-slate-500">Ordenar por</label>
-            <select id="fSort" class="w-full border rounded-lg px-3 py-2 text-sm">
-              <option value="nome">Nome (A–Z)</option>
-              <option value="matricula">Matrícula (A–Z)</option>
-              <option value="prox">Próx. Manutenção (mais cedo)</option>
-            </select>
-          </div>
-          <div class="flex gap-2 items-end">
-            <button id="btnClear" class="px-3 py-2 text-sm rounded-md border bg-white">Limpar</button>
-            <div class="flex md:hidden items-center gap-2 ml-auto">
-              <span class="text-slate-500">🔎</span>
-              <input id="q-m" class="w-40 border rounded-lg px-3 py-2 text-sm" placeholder="Pesquisar..." />
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="notice" class="hidden mt-4 text-sm rounded-lg border p-3"></div>
-    </div>
-  </section>
-
   <!-- Grid -->
   <main class="max-w-7xl mx-auto px-4 py-6">
     <div id="grid" class="grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"></div>
-    <div id="empty" class="hidden text-center text-slate-600 py-20">😕 Sem resultados para os filtros atuais.</div>
+    <div id="empty" class="hidden text-center text-slate-600 py-20">😕 Sem resultados.</div>
   </main>
 
   <!-- Card Template -->
@@ -85,7 +47,6 @@
     <div class="card overflow-hidden rounded-2xl border bg-white">
       <a class="block" data-link>
         <div class="relative aspect-video bg-slate-100 overflow-hidden" data-figure>
-          <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
           <div class="grid place-items-center h-full text-slate-400 text-sm">🖼️ Sem foto</div>
           <span class="absolute left-2 top-2 text-[11px] px-2 py-0.5 rounded-full bg-white/90 border" data-chip-matricula></span>
         </div>
@@ -219,4 +180,171 @@
       const categoria = pick(row,'categoria','tipo');
       const matricula = pick(row,'matricula','matrícula');
       const km = pick(row,'km','km da ultima revisão','km última revisão');
-     
+      const estado = pick(row,'estado') || 'Operacional';
+      const dUlt = pick(row,'data da última revisão','data ultima revisão','data_ultima_revisao');
+      const prox = dUlt ? fmt(addMonths(parseDate(dUlt),12)) : '';
+      const insp = fmt(parseDate(pick(row,'inspecao','inspeção','data inspeção')));
+      const seg = fmt(parseDate(pick(row,'seguro','data seguro')));
+      const preco = toNum(pick(row,'valor compra','valor_compra','preço','preco'));
+      const obs = pick(row,'observacoes','observações') || pick(row,'descrição da última revisão','descricao_ultima_revisao');
+      const id = pick(row,'id') || String(i+1);
+      return { id, nome, foto1, foto2, categoria, matricula, km, estado, prox, insp, seg, preco, obs };
+    }
+
+    const state = { data:[], filtered:[], role:'user', q:'', fCat:'', fEst:'', fSort:'nome' };
+
+    function showNotice(type, msg){
+      // no hero notice in slim version; safe-guard
+      const el = document.getElementById('notice');
+      if(!el) return;
+      el.className = `mt-4 text-sm rounded-lg border p-3 ${type==='err'?'text-red-700 bg-red-50 border-red-200':'text-emerald-700 bg-emerald-50 border-emerald-200'}`;
+      el.textContent = msg; el.classList.remove('hidden');
+    }
+    function hideNotice(){ const el=document.getElementById('notice'); if(el) el.classList.add('hidden'); }
+
+    function applyFilters(){
+      const q = state.q.toLowerCase();
+      let arr = state.data.filter(it => [it.nome,it.matricula,it.categoria].some(v => (v||'').toLowerCase().includes(q)));
+      if(state.fCat) arr = arr.filter(it => (it.categoria||'') === state.fCat);
+      if(state.fEst) arr = arr.filter(it => (it.estado||'') === state.fEst);
+      arr.sort(comp[state.fSort] || comp.nome);
+      state.filtered = arr;
+      render();
+    }
+
+    function render(){
+      document.getElementById('count').textContent = `${state.filtered.length} viaturas`;
+      const grid = document.getElementById('grid'); grid.innerHTML='';
+      const empty = document.getElementById('empty');
+      empty.classList.toggle('hidden', state.filtered.length!==0);
+      const tpl = document.getElementById('card-tpl');
+      for(const it of state.filtered){
+        const node = tpl.content.cloneNode(true);
+        const fig = node.querySelector('[data-figure]');
+        const chipMat = node.querySelector('[data-chip-matricula]');
+        const chipCat = node.querySelector('[data-chip-categoria]');
+        chipMat.textContent = it.matricula || '—';
+        chipCat.textContent = it.categoria || '—';
+        if(it.foto1){ fig.innerHTML = `<img src="${it.foto1}" alt="${it.nome}" class="w-full h-full object-cover"/>`; }
+        node.querySelector('[data-nome]').textContent = it.nome;
+        node.querySelector('[data-proxmanut]').textContent = it.prox || '—';
+        const preco = node.querySelector('[data-preco]');
+        if(state.role==='admin' && it.preco!=null){ preco.classList.remove('hidden'); preco.innerHTML = `Valor compra: <strong>€ ${Number(it.preco).toLocaleString('pt-PT')}</strong>`; }
+        node.querySelector('[data-cta]').addEventListener('click',(e)=>{ e.preventDefault(); openDialog(it); });
+        node.querySelector('[data-link]').addEventListener('click',(e)=>{ e.preventDefault(); openDialog(it); });
+        grid.appendChild(node);
+      }
+    }
+
+    function openDialog(it){
+      const dlg=document.getElementById('dlg');
+      document.getElementById('dlg-title').textContent = it.nome;
+      document.getElementById('dlg-sub').textContent = [it.categoria,it.matricula].filter(Boolean).join(' • ');
+      document.getElementById('dlg-matricula').textContent = it.matricula||'—';
+      document.getElementById('dlg-categoria').textContent = it.categoria||'—';
+      document.getElementById('dlg-prox').textContent = it.prox||'—';
+      document.getElementById('dlg-insp').textContent = it.insp||'—';
+      document.getElementById('dlg-seg').textContent = it.seg||'—';
+      document.getElementById('dlg-km').textContent = it.km||'—';
+      const rowPreco = document.getElementById('dlg-preco-row');
+      if(state.role==='admin' && it.preco!=null){ rowPreco.classList.remove('hidden'); document.getElementById('dlg-preco').textContent = '€ '+Number(it.preco).toLocaleString('pt-PT'); }
+      else { rowPreco.classList.add('hidden'); }
+      const thumbs = document.getElementById('dlg-thumbs'); thumbs.innerHTML='';
+      const main = document.getElementById('dlg-main');
+      if(it.foto1){ main.src = it.foto1; const b1=document.createElement('button'); b1.className='border rounded-lg overflow-hidden'; b1.innerHTML=`<img src="${it.foto1}" class="w-24 h-16 object-cover">`; b1.onclick=()=> main.src=it.foto1; thumbs.appendChild(b1);} else { main.removeAttribute('src'); }
+      if(it.foto2){ const b2=document.createElement('button'); b2.className='border rounded-lg overflow-hidden'; b2.innerHTML=`<img src="${it.foto2}" class="w-24 h-16 object-cover">`; b2.onclick=()=> main.src=it.foto2; thumbs.appendChild(b2); }
+      document.getElementById('dlg-obs').textContent = it.obs || '—';
+      dlg.showModal();
+    }
+
+    async function load(){
+      hideNotice();
+      try{
+        const res = await fetch(CSV_URL + '&_cb=' + Date.now(), { cache:'no-store' });
+        if(!res.ok) throw new Error('Falha HTTP '+res.status);
+        const text = await res.text();
+        const rows = csvToObjects(text);
+        const norm = rows.map(normalize);
+        state.data = norm; state.filtered = norm; render();
+      }catch(err){ console.error(err); state.data=[]; state.filtered=[]; render(); }
+      applyBranding();
+    }
+
+    // Branding helpers
+    function getBranding(){
+      const urlParams = new URLSearchParams(location.search);
+      const t = urlParams.get('title') || localStorage.getItem(LS_TITLE) || 'Catálogo de Viaturas';
+      const l = urlParams.get('logo') || localStorage.getItem(LS_LOGO) || '';
+      return { title:t, logo:l };
+    }
+    function applyBranding(){
+      const {title, logo} = getBranding();
+      const titleEl = document.getElementById('brandTitle');
+      const imgEl = document.getElementById('brandLogo');
+      const emojiEl = document.getElementById('brandEmoji');
+      titleEl.textContent = title || 'Catálogo de Viaturas';
+      if(logo){ imgEl.src = logo; imgEl.classList.remove('hidden'); emojiEl.classList.add('hidden'); }
+      else { imgEl.classList.add('hidden'); emojiEl.classList.remove('hidden'); }
+      const pTitle=document.getElementById('cfgPreviewTitle'); if(pTitle) pTitle.textContent=titleEl.textContent;
+      const pLogo=document.getElementById('cfgPreviewLogo'); const pEmoji=document.getElementById('cfgPreviewEmoji');
+      if(pLogo){ if(logo){ pLogo.src=logo; pLogo.classList.remove('hidden'); pEmoji.classList.add('hidden'); } else { pLogo.classList.add('hidden'); pEmoji.classList.remove('hidden'); } }
+    }
+
+    // Events
+    document.getElementById('q').addEventListener('input', (e)=>{ state.q = e.target.value; applyFilters(); });
+    document.getElementById('role').addEventListener('change', (e)=>{
+      if(e.target.value==='admin'){
+        const pwd = prompt('Password de admin:');
+        if(pwd===ADMIN_PASS){ state.role='admin'; document.getElementById('badge').textContent='Admin'; document.getElementById('badge').className='text-xs px-2 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200'; }
+        else { alert('Password incorreta. Mantendo Utilizador.'); e.target.value='user'; state.role='user'; document.getElementById('badge').textContent='Utilizador'; document.getElementById('badge').className='text-xs px-2 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200'; }
+      }else{ state.role='user'; document.getElementById('badge').textContent='Utilizador'; document.getElementById('badge').className='text-xs px-2 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200'; }
+      render();
+    });
+    document.getElementById('dlg-close').addEventListener('click', ()=> document.getElementById('dlg').close());
+
+    // Config dialog wiring
+    const btnCfg = document.getElementById('btnConfig');
+    const cfg = document.getElementById('cfg');
+    const cfgForm = document.getElementById('cfgForm');
+    const cfgTitle = document.getElementById('cfgTitle');
+    const cfgLogo = document.getElementById('cfgLogo');
+    const cfgPrevTitle = document.getElementById('cfgPreviewTitle');
+    const cfgPrevLogo = document.getElementById('cfgPreviewLogo');
+    const cfgPrevEmoji = document.getElementById('cfgPreviewEmoji');
+    btnCfg.addEventListener('click', ()=>{
+      const b = getBranding();
+      cfgTitle.value = b.title || '';
+      cfgLogo.value = b.logo || '';
+      cfgPrevTitle.textContent = b.title || 'Catálogo de Viaturas';
+      if(b.logo){ cfgPrevLogo.src=b.logo; cfgPrevLogo.classList.remove('hidden'); cfgPrevEmoji.classList.add('hidden'); }
+      else { cfgPrevLogo.classList.add('hidden'); cfgPrevEmoji.classList.remove('hidden'); }
+      cfg.showModal();
+    });
+    document.getElementById('cfgClose').addEventListener('click', ()=> cfg.close());
+    document.getElementById('cfgReset').addEventListener('click', ()=>{
+      localStorage.removeItem(LS_TITLE);
+      localStorage.removeItem(LS_LOGO);
+      cfgTitle.value=''; cfgLogo.value='';
+      cfgPrevTitle.textContent = 'Catálogo de Viaturas';
+      cfgPrevLogo.classList.add('hidden'); cfgPrevEmoji.classList.remove('hidden');
+      applyBranding();
+    });
+    cfgTitle.addEventListener('input', ()=>{ cfgPrevTitle.textContent = cfgTitle.value || 'Catálogo de Viaturas'; });
+    cfgLogo.addEventListener('input', ()=>{
+      const v = cfgLogo.value.trim();
+      if(v){ cfgPrevLogo.src=v; cfgPrevLogo.classList.remove('hidden'); cfgPrevEmoji.classList.add('hidden'); }
+      else { cfgPrevLogo.classList.add('hidden'); cfgPrevEmoji.classList.remove('hidden'); }
+    });
+    cfgForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      localStorage.setItem(LS_TITLE, (cfgTitle.value||'').trim());
+      localStorage.setItem(LS_LOGO, (cfgLogo.value||'').trim());
+      applyBranding();
+      cfg.close();
+    });
+
+    // Boot
+    load();
+  </script>
+</body>
+</html>
