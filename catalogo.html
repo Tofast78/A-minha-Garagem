@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Catálogo de Viaturas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .card:hover{ box-shadow: 0 10px 35px rgba(2,6,23,.08) }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-white to-slate-50 text-slate-900">
+  <!-- Header -->
+  <header class="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+      <a class="flex items-center gap-3" href="index.html">
+        <span id="brandLogoWrap" class="grid place-items-center w-10 h-10 rounded-xl bg-slate-900 text-white overflow-hidden">
+          <span id="brandEmoji" class="text-lg">🚗</span>
+          <img id="brandLogo" alt="Logo" class="w-full h-full object-cover hidden" />
+        </span>
+        <span id="brandTitle" class="text-xl font-semibold">Catálogo de Viaturas</span>
+      </a>
+      <span id="count" class="text-sm text-slate-500"></span>
+      <div class="ml-auto flex items-center gap-2 w-full max-w-md">
+        <span class="text-slate-500">🔎</span>
+        <input id="q" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Procurar por nome, matrícula, categoria..." />
+      </div>
+      <div class="ml-3 flex items-center gap-2">
+        <a href="adicionar-atividade.html" class="px-3 py-2 text-sm rounded-md border bg-white">+ Adicionar atividade</a>
+        <select id="role" class="border rounded-md px-2 py-1 text-sm">
+          <option value="user" selected>Utilizador</option>
+          <option value="admin">Admin</option>
+        </select>
+        <span id="badge" class="text-xs px-2 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200">Utilizador</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Grid -->
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <div id="grid" class="grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"></div>
+    <div id="empty" class="hidden text-center text-slate-600 py-20">😕 Sem resultados.</div>
+  </main>
+
+  <!-- Card Template -->
+  <template id="card-tpl">
+    <div class="card overflow-hidden rounded-2xl border bg-white">
+      <a class="block" data-link>
+        <div class="relative aspect-video bg-slate-100 overflow-hidden" data-figure>
+          <div class="grid place-items-center h-full text-slate-400 text-sm">🖼️ Sem foto</div>
+          <span class="absolute left-2 top-2 text-[11px] px-2 py-0.5 rounded-full bg-white/90 border" data-chip-matricula></span>
+        </div>
+      </a>
+      <div class="p-4 border-t">
+        <div class="text-base font-semibold flex items-center gap-2">
+          <span class="truncate" data-nome></span>
+          <span class="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-slate-50 text-slate-700 border border-slate-200" data-chip-categoria></span>
+        </div>
+        <div class="mt-2 text-sm text-slate-600 flex justify-between">
+          <span>Próx. manutenção</span>
+          <span class="font-medium" data-proxmanut></span>
+        </div>
+        <div class="mt-2 text-sm hidden" data-preco></div>
+        <div class="mt-3 flex justify-end">
+          <button class="px-3 py-2 text-sm rounded-md border bg-slate-900 text-white" data-cta>Ver detalhes</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Detail Dialog -->
+  <dialog id="dlg" class="rounded-2xl border p-0 w-[min(1000px,95vw)] overflow-hidden">
+    <div class="p-4 border-b flex items-center justify-between bg-white">
+      <div class="flex items-center gap-3">
+        <span class="grid place-items-center w-9 h-9 rounded-lg bg-slate-900 text-white">🚘</span>
+        <div>
+          <div class="text-lg font-semibold" id="dlg-title"></div>
+          <div class="text-xs text-slate-500" id="dlg-sub"></div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="dlg-add-ativ" class="hidden px-2 py-1 text-xs rounded border bg-white">+ Adicionar atividade</button>
+        <button id="dlg-close" class="px-3 py-2 text-sm rounded-md border bg-white">Fechar</button>
+      </div>
+    </div>
+    <div class="grid md:grid-cols-5 gap-0">
+      <div class="md:col-span-3 bg-slate-100">
+        <div class="aspect-video overflow-hidden">
+          <img id="dlg-main" class="w-full h-full object-cover" alt="Foto principal" />
+        </div>
+        <div class="p-3 border-t flex gap-2 flex-wrap" id="dlg-thumbs"></div>
+      </div>
+      <div class="md:col-span-2 p-5 grid gap-3 text-sm bg-white">
+        <div class="grid gap-2">
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Matrícula</div><div id="dlg-matricula" class="font-medium"></div></div>
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Categoria</div><div id="dlg-categoria" class="font-medium"></div></div>
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Próx. Manutenção</div><div id="dlg-prox" class="font-medium"></div></div>
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Inspeção</div><div id="dlg-insp" class="font-medium"></div></div>
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">Seguro</div><div id="dlg-seg" class="font-medium"></div></div>
+          <div class="flex justify-between border-b pb-1"><div class="text-slate-500">KM</div><div id="dlg-km" class="font-medium"></div></div>
+          <div class="hidden flex justify-between border-b pb-1" id="dlg-preco-row"><div class="text-slate-500">Valor compra</div><div id="dlg-preco" class="font-semibold"></div></div>
+        </div>
+        <div>
+          <div class="text-slate-500">Observações</div>
+          <div id="dlg-obs"></div>
+        </div>
+        <div class="mt-3">
+          <div class="text-slate-500">Atividades</div>
+          <div id="dlg-ativ" class="divide-y"></div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRF0MjiPepVk_w5EjX1F9ZdIjWqUMAW-h-nXUSBRQIWXRIQ3QQ00ckVT58MNnQsuPRJgF7HuzfnnbSW/pub?output=csv";
+    const ACTIVITIES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRF0MjiPepVk_w5EjX1F9ZdIjWqUMAW-h-nXUSBRQIWXRIQ3QQ00ckVT58MNnQsuPRJgF7HuzfnnbSW/pub?gid=792286956&single=true&output=csv";
+    const ADMIN_PASS = "775500";
+
+    // ... aqui entra o mesmo JavaScript de normalização, renderização, filtros e diálogo
+    // que já te tinha preparado na versão completa com suporte a atividades
+  </script>
+</body>
+</html>
