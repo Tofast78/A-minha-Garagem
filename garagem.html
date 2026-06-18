@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>A Minha Garagem</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c10;--surf:#0f1923;--surf2:#141d28;--border:#1c2836;
+  --a1:#4facfe;--a2:#00f2fe;--warn:#f59e0b;--danger:#ef4444;--green:#43e97b;
+  --muted:#5a7a99;--text:#dce8f5;--text-dim:#8fafc8;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
+
+/* ── TOP BAR ── */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(8,12,16,.85);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;gap:16px;
+}
+.logo{display:flex;align-items:center;gap:10px}
+.logo svg{color:var(--a1)}
+.logo-text{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;
+  background:linear-gradient(135deg,#fff,var(--a1));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;
+  font-family:'Inter',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;
+  border:none;transition:all .2s}
+.btn-primary{background:linear-gradient(135deg,var(--a1),var(--a2));color:#080c10}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--a1);color:var(--a1)}
+.btn-sm{padding:6px 12px;font-size:.75rem}
+.btn-danger{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.25)}
+.btn-danger:hover{background:rgba(239,68,68,.22)}
+
+/* ── ALERT BANNER ── */
+#alert-banner{display:none;padding:0 24px;margin-top:0}
+.alert-list{display:flex;flex-direction:column;gap:8px;padding:16px 0}
+.alert-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;border-radius:12px;font-size:.85rem;
+}
+.alert-item.danger{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#fca5a5}
+.alert-item.warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:#fcd34d}
+.alert-icon{font-size:1.1rem;flex-shrink:0}
+
+/* ── SUMMARY BAR ── */
+.summary{
+  display:flex;gap:0;max-width:700px;
+  margin:24px 24px 0;
+  border:1px solid var(--border);border-radius:14px;
+  background:var(--surf);overflow:hidden;
+}
+.sum-item{flex:1;padding:16px 12px;text-align:center;border-right:1px solid var(--border)}
+.sum-item:last-child{border-right:none}
+.sum-num{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:700;
+  background:linear-gradient(135deg,var(--a1),var(--a2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sum-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+
+/* ── SECTION DIVIDER ── */
+.section-div{display:flex;align-items:center;gap:14px;padding:0 24px;margin-top:32px}
+.section-div-label{font-family:'JetBrains Mono',monospace;font-size:.7rem;
+  color:var(--a1);text-transform:uppercase;letter-spacing:.15em;white-space:nowrap}
+.section-div-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+
+/* ── VEHICLES GRID ── */
+.vehicles-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:16px;padding:16px 24px 32px;
+}
+
+/* ── VEHICLE CARD ── */
+.vcard{
+  background:var(--surf);border:1px solid var(--border);border-radius:16px;
+  overflow:hidden;display:flex;flex-direction:column;
+  transition:border-color .2s,transform .2s,box-shadow .2s;
+}
+.vcard:hover{border-color:rgba(79,172,254,.35);transform:translateY(-2px);
+  box-shadow:0 8px 28px rgba(79,172,254,.07)}
+.vcard.has-danger{border-color:rgba(239,68,68,.35)}
+.vcard.has-warn{border-color:rgba(245,158,11,.3)}
+
+.vcard-photo{
+  width:100%;height:160px;object-fit:cover;background:var(--surf2);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:3rem;
+  border-bottom:1px solid var(--border);
+}
+.vcard-photo img{width:100%;height:100%;object-fit:cover}
+
+.vcard-body{padding:18px;display:flex;flex-direction:column;gap:12px;flex:1}
+.vcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.vcard-name{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--text)}
+.vcard-plate{
+  font-family:'JetBrains Mono',monospace;font-size:.8rem;
+  padding:3px 10px;border:1px solid var(--border);border-radius:8px;
+  color:var(--a1);background:rgba(79,172,254,.06);white-space:nowrap;
+}
+.vcard-meta{font-size:.8rem;color:var(--muted)}
+
+/* badges */
+.badges{display:flex;flex-wrap:wrap;gap:6px}
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:.72rem;padding:4px 10px;border-radius:20px;font-weight:500;
+}
+.badge.ok{background:rgba(67,233,123,.08);color:var(--green);border:1px solid rgba(67,233,123,.2)}
+.badge.warn{background:rgba(245,158,11,.08);color:var(--warn);border:1px solid rgba(245,158,11,.2)}
+.badge.danger{background:rgba(239,68,68,.08);color:var(--danger);border:1px solid rgba(239,68,68,.2)}
+.badge.neutral{background:rgba(90,122,153,.08);color:var(--muted);border:1px solid var(--border)}
+
+.vcard-actions{display:flex;gap:6px;margin-top:4px}
+
+/* ── EMPTY STATE ── */
+.empty{
+  grid-column:1/-1;text-align:center;padding:64px 24px;
+  color:var(--muted);
+}
+.empty-icon{font-size:3rem;margin-bottom:12px;opacity:.4}
+
+/* ── MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;padding:16px;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--surf);border:1px solid var(--border);border-radius:20px;
+  width:100%;max-width:560px;max-height:90vh;overflow-y:auto;
+  padding:28px;display:flex;flex-direction:column;gap:20px;
+  transform:translateY(12px);transition:transform .25s;
+}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;
+  background:linear-gradient(135deg,#fff,var(--a1));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:1.4rem;line-height:1;padding:4px;transition:color .2s}
+.modal-close:hover{color:var(--text)}
+
+/* form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:.75rem;color:var(--text-dim);text-transform:uppercase;
+  letter-spacing:.08em;font-weight:600}
+.form-group input,.form-group select,.form-group textarea{
+  background:var(--surf2);border:1px solid var(--border);border-radius:10px;
+  padding:10px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:.875rem;
+  outline:none;transition:border-color .2s;width:100%;
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--a1)}
+.form-group input::placeholder,.form-group textarea::placeholder{color:var(--muted)}
+.form-group textarea{resize:vertical;min-height:72px}
+.form-section{font-family:'JetBrains Mono',monospace;font-size:.68rem;
+  color:var(--a1);text-transform:uppercase;letter-spacing:.12em;
+  padding-bottom:6px;border-bottom:1px solid var(--border);grid-column:1/-1;margin-top:4px}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+
+/* ── DETAIL PANEL (slide-in) ── */
+.detail-overlay{
+  position:fixed;inset:0;z-index:150;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
+  display:flex;justify-content:flex-end;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.detail-overlay.open{opacity:1;pointer-events:all}
+.detail-panel{
+  background:var(--surf);border-left:1px solid var(--border);
+  width:100%;max-width:480px;height:100%;overflow-y:auto;
+  padding:28px;display:flex;flex-direction:column;gap:20px;
+  transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+.detail-overlay.open .detail-panel{transform:translateX(0)}
+.detail-photo{width:100%;height:180px;border-radius:14px;object-fit:cover;
+  background:var(--surf2);display:flex;align-items:center;justify-content:center;
+  font-size:3.5rem;color:var(--muted);border:1px solid var(--border);overflow:hidden}
+.detail-photo img{width:100%;height:100%;object-fit:cover}
+.detail-name{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--text)}
+.detail-plate{font-family:'JetBrains Mono',monospace;font-size:.9rem;
+  padding:4px 12px;border:1px solid var(--border);border-radius:8px;
+  color:var(--a1);background:rgba(79,172,254,.06);display:inline-block}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.info-box{background:var(--surf2);border:1px solid var(--border);
+  border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.info-box-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.info-box-val{font-size:.9rem;color:var(--text);font-weight:500}
+
+/* maintenance list */
+.maint-header{display:flex;align-items:center;justify-content:space-between}
+.maint-title{font-family:'JetBrains Mono',monospace;font-size:.7rem;
+  color:var(--a1);text-transform:uppercase;letter-spacing:.12em}
+.maint-list{display:flex;flex-direction:column;gap:8px}
+.maint-item{
+  background:var(--surf2);border:1px solid var(--border);border-radius:12px;
+  padding:12px 14px;display:flex;align-items:flex-start;gap:10px;
+}
+.maint-dot{width:8px;height:8px;border-radius:50%;background:var(--a1);
+  flex-shrink:0;margin-top:5px}
+.maint-info{flex:1;min-width:0}
+.maint-desc{font-size:.85rem;color:var(--text);line-height:1.4}
+.maint-meta{font-size:.72rem;color:var(--muted);margin-top:2px}
+.maint-empty{font-size:.85rem;color:var(--muted);text-align:center;padding:20px 0;font-style:italic}
+.maint-delete{background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:.9rem;padding:2px 4px;transition:color .2s;flex-shrink:0}
+.maint-delete:hover{color:var(--danger)}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--surf2);border:1px solid var(--border);border-radius:12px;
+  padding:12px 20px;font-size:.85rem;color:var(--text);
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+  opacity:0;transition:all .3s;z-index:500;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── IMPORT/EXPORT ── */
+.data-actions{display:flex;gap:8px;align-items:center}
+
+@media(max-width:600px){
+  .form-grid{grid-template-columns:1fr}
+  .form-full{grid-column:1}
+  .summary{flex-wrap:wrap}
+  .topbar{flex-wrap:wrap}
+  .data-actions{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+    </svg>
+    <span class="logo-text">A Minha Garagem</span>
+  </div>
+  <div class="topbar-actions">
+    <div class="data-actions">
+      <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇ Exportar</button>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+        ⬆ Importar
+        <input type="file" accept=".json" style="display:none" onchange="importData(event)"/>
+      </label>
+    </div>
+    <button class="btn btn-primary" onclick="openVehicleModal()">+ Adicionar viatura</button>
+  </div>
+</div>
+
+<!-- ALERTS -->
+<div id="alert-banner">
+  <div class="alert-list" id="alert-list"></div>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary" id="summary">
+  <div class="sum-item"><div class="sum-num" id="s-total">0</div><div class="sum-label">Viaturas</div></div>
+  <div class="sum-item"><div class="sum-num" id="s-ok" style="color:var(--green)">0</div><div class="sum-label">Em dia</div></div>
+  <div class="sum-item"><div class="sum-num" id="s-warn" style="color:var(--warn)">0</div><div class="sum-label">A expirar</div></div>
+  <div class="sum-item"><div class="sum-num" id="s-danger" style="color:var(--danger)">0</div><div class="sum-label">Expirados</div></div>
+</div>
+
+<!-- VEHICLES -->
+<div class="section-div">
+  <span class="section-div-label">🚗 Viaturas</span>
+  <div class="section-div-line"></div>
+</div>
+<div class="vehicles-grid" id="vehicles-grid">
+  <div class="empty">
+    <div class="empty-icon">🚗</div>
+    <p>Ainda não há viaturas.<br>Adiciona a primeira!</p>
+  </div>
+</div>
+
+<!-- ── MODAL: ADD/EDIT VEHICLE ── -->
+<div class="modal-overlay" id="vehicle-modal" onclick="closeOnOverlay(event,'vehicle-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Nova Viatura</span>
+      <button class="modal-close" onclick="closeModal('vehicle-modal')">✕</button>
+    </div>
+
+    <div class="form-grid">
+      <span class="form-section">Identificação</span>
+      <div class="form-group form-full">
+        <label>Marca e Modelo</label>
+        <input id="f-name" placeholder="ex: Toyota Yaris 1.5"/>
+      </div>
+      <div class="form-group">
+        <label>Matrícula</label>
+        <input id="f-plate" placeholder="AA-00-BB" style="text-transform:uppercase"/>
+      </div>
+      <div class="form-group">
+        <label>Ano</label>
+        <input id="f-year" type="number" placeholder="2020"/>
+      </div>
+      <div class="form-group">
+        <label>Combustível</label>
+        <select id="f-fuel">
+          <option value="">–</option>
+          <option>Gasolina</option><option>Gasóleo</option>
+          <option>Híbrido</option><option>Elétrico</option><option>GPL</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Cor</label>
+        <input id="f-color" placeholder="ex: Branco"/>
+      </div>
+      <div class="form-group form-full">
+        <label>Foto da viatura (URL ou base64)</label>
+        <input id="f-photo" placeholder="https://... ou carrega abaixo"/>
+        <label class="btn btn-ghost btn-sm" style="margin-top:6px;cursor:pointer;width:fit-content">
+          📷 Carregar foto
+          <input type="file" accept="image/*" style="display:none" onchange="loadPhoto(event)"/>
+        </label>
+        <img id="f-photo-preview" src="" style="display:none;margin-top:8px;width:100%;max-height:140px;object-fit:cover;border-radius:10px;border:1px solid var(--border)"/>
+      </div>
+
+      <span class="form-section">Documentos</span>
+      <div class="form-group">
+        <label>Seguro — validade</label>
+        <input id="f-seguro" type="date"/>
+      </div>
+      <div class="form-group">
+        <label>Inspeção — validade</label>
+        <input id="f-inspecao" type="date"/>
+      </div>
+      <div class="form-group">
+        <label>IUC — validade</label>
+        <input id="f-iuc" type="date"/>
+      </div>
+      <div class="form-group">
+        <label>Km atuais</label>
+        <input id="f-km" type="number" placeholder="ex: 80000"/>
+      </div>
+      <div class="form-group form-full">
+        <label>Notas</label>
+        <textarea id="f-notes" placeholder="Informações adicionais…"></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('vehicle-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveVehicle()">Guardar viatura</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: ADD MAINTENANCE ── -->
+<div class="modal-overlay" id="maint-modal" onclick="closeOnOverlay(event,'maint-modal')">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <span class="modal-title">Registar manutenção</span>
+      <button class="modal-close" onclick="closeModal('maint-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>Descrição</label>
+        <input id="m-desc" placeholder="ex: Mudança de óleo, filtro de ar…"/>
+      </div>
+      <div class="form-group">
+        <label>Data</label>
+        <input id="m-date" type="date"/>
+      </div>
+      <div class="form-group">
+        <label>Km</label>
+        <input id="m-km" type="number" placeholder="km"/>
+      </div>
+      <div class="form-group">
+        <label>Custo (€)</label>
+        <input id="m-cost" type="number" placeholder="0.00" step="0.01"/>
+      </div>
+      <div class="form-group">
+        <label>Próxima manutenção em (km)</label>
+        <input id="m-next" type="number" placeholder="opcional"/>
+      </div>
+      <div class="form-group form-full">
+        <label>Notas</label>
+        <textarea id="m-notes" placeholder="Oficina, garantia…"></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('maint-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveMaintenance()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DETAIL PANEL ── -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetailOnOverlay(event)">
+  <div class="detail-panel" id="detail-panel"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──
+const STORE='garagem_v2';
+let data={vehicles:[]};
+let editingId=null;
+let maintVehicleId=null;
+
+function load(){
+  try{const r=localStorage.getItem(STORE);if(r)data=JSON.parse(r)}catch(e){}
+}
+function save(){localStorage.setItem(STORE,JSON.stringify(data))}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+
+// ── DATES ──
+function daysUntil(dateStr){
+  if(!dateStr)return null;
+  const diff=new Date(dateStr)-new Date();
+  return Math.ceil(diff/(1000*60*60*24));
+}
+function fmtDate(d){
+  if(!d)return '–';
+  return new Date(d).toLocaleDateString('pt-PT',{day:'2-digit',month:'short',year:'numeric'});
+}
+function docStatus(dateStr){
+  const d=daysUntil(dateStr);
+  if(d===null)return{cls:'neutral',txt:'Não definido'};
+  if(d<0)return{cls:'danger',txt:`Expirado há ${Math.abs(d)}d`};
+  if(d<=30)return{cls:'warn',txt:`Expira em ${d}d`};
+  return{cls:'ok',txt:`Válido (${d}d)`};
+}
+
+// ── RENDER ──
+function render(){
+  renderSummary();
+  renderAlerts();
+  renderGrid();
+}
+
+function renderSummary(){
+  const v=data.vehicles;
+  let ok=0,warn=0,danger=0;
+  v.forEach(veh=>{
+    const worst=worstStatus(veh);
+    if(worst==='danger')danger++;
+    else if(worst==='warn')warn++;
+    else ok++;
+  });
+  document.getElementById('s-total').textContent=v.length;
+  document.getElementById('s-ok').textContent=ok;
+  document.getElementById('s-warn').textContent=warn;
+  document.getElementById('s-danger').textContent=danger;
+}
+
+function worstStatus(veh){
+  const docs=['seguro','inspecao','iuc'];
+  let worst='ok';
+  docs.forEach(d=>{
+    const st=docStatus(veh[d]).cls;
+    if(st==='danger')worst='danger';
+    else if(st==='warn'&&worst!=='danger')worst='warn';
+    else if(st==='neutral'&&worst==='ok')worst='ok';
+  });
+  return worst;
+}
+
+function renderAlerts(){
+  const banner=document.getElementById('alert-banner');
+  const list=document.getElementById('alert-list');
+  const alerts=[];
+  data.vehicles.forEach(veh=>{
+    [{key:'seguro',label:'Seguro'},{key:'inspecao',label:'Inspeção'},{key:'iuc',label:'IUC'}].forEach(({key,label})=>{
+      const st=docStatus(veh[key]);
+      if(st.cls==='danger')alerts.push({cls:'danger',msg:`🚗 ${veh.name} — ${label} <b>${st.txt}</b>`});
+      else if(st.cls==='warn')alerts.push({cls:'warn',msg:`🚗 ${veh.name} — ${label} <b>${st.txt}</b>`});
+    });
+  });
+  if(!alerts.length){banner.style.display='none';return;}
+  banner.style.display='block';
+  list.innerHTML=alerts.map(a=>`<div class="alert-item ${a.cls}"><span class="alert-icon">${a.cls==='danger'?'🔴':'🟡'}</span><span>${a.msg}</span></div>`).join('');
+}
+
+function renderGrid(){
+  const grid=document.getElementById('vehicles-grid');
+  if(!data.vehicles.length){
+    grid.innerHTML=`<div class="empty"><div class="empty-icon">🚗</div><p>Ainda não há viaturas.<br>Adiciona a primeira!</p></div>`;
+    return;
+  }
+  grid.innerHTML=data.vehicles.map(veh=>{
+    const ws=worstStatus(veh);
+    const seg=docStatus(veh.seguro);
+    const ins=docStatus(veh.inspecao);
+    const iuc=docStatus(veh.iuc);
+    const photoEl=veh.photo
+      ?`<div class="vcard-photo"><img src="${veh.photo}" alt="${veh.name}" onerror="this.parentElement.innerHTML='🚗'"/></div>`
+      :`<div class="vcard-photo">🚗</div>`;
+    return `<div class="vcard ${ws==='danger'?'has-danger':ws==='warn'?'has-warn':''}" >
+      ${photoEl}
+      <div class="vcard-body">
+        <div class="vcard-top">
+          <div class="vcard-name">${veh.name}</div>
+          <div class="vcard-plate">${veh.plate||'–'}</div>
+        </div>
+        <div class="vcard-meta">${[veh.year,veh.fuel,veh.color].filter(Boolean).join(' · ')||'–'}</div>
+        <div class="badges">
+          <span class="badge ${seg.cls}">🛡 ${seg.txt}</span>
+          <span class="badge ${ins.cls}">🔧 ${ins.txt}</span>
+          ${veh.iuc?`<span class="badge ${iuc.cls}">📄 IUC ${iuc.txt}</span>`:''}
+        </div>
+        <div class="vcard-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openDetail('${veh.id}')">Ver detalhes</button>
+          <button class="btn btn-ghost btn-sm" onclick="openVehicleModal('${veh.id}')">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteVehicle('${veh.id}')">Apagar</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── VEHICLE MODAL ──
+function openVehicleModal(id=null){
+  editingId=id;
+  const m=document.getElementById('vehicle-modal');
+  document.getElementById('modal-title').textContent=id?'Editar Viatura':'Nova Viatura';
+  const fields=['name','plate','year','fuel','color','photo','seguro','inspecao','iuc','km','notes'];
+  fields.forEach(f=>{ const el=document.getElementById('f-'+f); if(el)el.value=''; });
+  document.getElementById('f-photo-preview').style.display='none';
+  if(id){
+    const veh=data.vehicles.find(v=>v.id===id);
+    if(veh){
+      fields.forEach(f=>{ const el=document.getElementById('f-'+f); if(el&&veh[f]!=null)el.value=veh[f]; });
+      if(veh.photo){const p=document.getElementById('f-photo-preview');p.src=veh.photo;p.style.display='block';}
+    }
+  }
+  m.classList.add('open');
+}
+
+function saveVehicle(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){showToast('⚠ Indica a marca e modelo');return;}
+  const veh={
+    id:editingId||uid(),name,
+    plate:document.getElementById('f-plate').value.trim().toUpperCase(),
+    year:document.getElementById('f-year').value,
+    fuel:document.getElementById('f-fuel').value,
+    color:document.getElementById('f-color').value.trim(),
+    photo:document.getElementById('f-photo').value.trim(),
+    seguro:document.getElementById('f-seguro').value,
+    inspecao:document.getElementById('f-inspecao').value,
+    iuc:document.getElementById('f-iuc').value,
+    km:document.getElementById('f-km').value,
+    notes:document.getElementById('f-notes').value.trim(),
+    maintenance:[]
+  };
+  if(editingId){
+    const idx=data.vehicles.findIndex(v=>v.id===editingId);
+    if(idx>-1){veh.maintenance=data.vehicles[idx].maintenance||[];data.vehicles[idx]=veh;}
+  } else {
+    data.vehicles.push(veh);
+  }
+  save();render();
+  closeModal('vehicle-modal');
+  showToast(editingId?'✓ Viatura atualizada':'✓ Viatura adicionada');
+}
+
+function deleteVehicle(id){
+  if(!confirm('Apagar esta viatura e todo o seu histórico?'))return;
+  data.vehicles=data.vehicles.filter(v=>v.id!==id);
+  save();render();
+  showToast('Viatura removida');
+}
+
+function loadPhoto(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    document.getElementById('f-photo').value=ev.target.result;
+    const p=document.getElementById('f-photo-preview');
+    p.src=ev.target.result;p.style.display='block';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── DETAIL PANEL ──
+function openDetail(id){
+  const veh=data.vehicles.find(v=>v.id===id);if(!veh)return;
+  maintVehicleId=id;
+  const panel=document.getElementById('detail-panel');
+  const seg=docStatus(veh.seguro);
+  const ins=docStatus(veh.inspecao);
+  const iuc=docStatus(veh.iuc);
+  const photoEl=veh.photo
+    ?`<div class="detail-photo"><img src="${veh.photo}" alt="${veh.name}" onerror="this.innerHTML='🚗'"/></div>`
+    :`<div class="detail-photo" style="display:flex;align-items:center;justify-content:center">🚗</div>`;
+
+  const maints=(veh.maintenance||[]).slice().reverse();
+  const maintHtml=maints.length
+    ?maints.map((m,i)=>`<div class="maint-item">
+        <div class="maint-dot"></div>
+        <div class="maint-info">
+          <div class="maint-desc">${m.desc}</div>
+          <div class="maint-meta">${fmtDate(m.date)}${m.km?' · '+Number(m.km).toLocaleString()+' km':''}${m.cost?' · '+Number(m.cost).toFixed(2)+'€':''}${m.notes?'<br>'+m.notes:''}</div>
+        </div>
+        <button class="maint-delete" onclick="deleteMaint('${id}',${maints.length-1-i})">✕</button>
+      </div>`).join('')
+    :`<div class="maint-empty">Sem registos de manutenção.</div>`;
+
+  panel.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div></div>
+      <button class="modal-close" onclick="closeDetail()">✕</button>
+    </div>
+    ${photoEl}
+    <div>
+      <div class="detail-name">${veh.name}</div>
+      <div class="detail-plate" style="margin-top:6px">${veh.plate||'–'}</div>
+    </div>
+    <div class="info-grid">
+      <div class="info-box"><div class="info-box-label">Ano</div><div class="info-box-val">${veh.year||'–'}</div></div>
+      <div class="info-box"><div class="info-box-label">Combustível</div><div class="info-box-val">${veh.fuel||'–'}</div></div>
+      <div class="info-box"><div class="info-box-label">Cor</div><div class="info-box-val">${veh.color||'–'}</div></div>
+      <div class="info-box"><div class="info-box-label">Km</div><div class="info-box-val">${veh.km?Number(veh.km).toLocaleString()+' km':'–'}</div></div>
+    </div>
+    <div class="info-grid">
+      <div class="info-box" style="grid-column:1/-1">
+        <div class="info-box-label">🛡 Seguro</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+          <span class="info-box-val">${fmtDate(veh.seguro)}</span>
+          <span class="badge ${seg.cls}">${seg.txt}</span>
+        </div>
+      </div>
+      <div class="info-box" style="grid-column:1/-1">
+        <div class="info-box-label">🔧 Inspeção</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+          <span class="info-box-val">${fmtDate(veh.inspecao)}</span>
+          <span class="badge ${ins.cls}">${ins.txt}</span>
+        </div>
+      </div>
+      ${veh.iuc?`<div class="info-box" style="grid-column:1/-1">
+        <div class="info-box-label">📄 IUC</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+          <span class="info-box-val">${fmtDate(veh.iuc)}</span>
+          <span class="badge ${iuc.cls}">${iuc.txt}</span>
+        </div>
+      </div>`:''}
+    </div>
+    ${veh.notes?`<div class="info-box"><div class="info-box-label">Notas</div><div class="info-box-val" style="margin-top:4px;font-size:.85rem;color:var(--text-dim)">${veh.notes}</div></div>`:''}
+    <div>
+      <div class="maint-header" style="margin-bottom:12px">
+        <span class="maint-title">📋 Histórico de Manutenção</span>
+        <button class="btn btn-ghost btn-sm" onclick="openMaintModal()">+ Registar</button>
+      </div>
+      <div class="maint-list">${maintHtml}</div>
+    </div>
+  `;
+  document.getElementById('detail-overlay').classList.add('open');
+}
+
+function closeDetail(){document.getElementById('detail-overlay').classList.remove('open')}
+function closeDetailOnOverlay(e){if(e.target===document.getElementById('detail-overlay'))closeDetail()}
+
+// ── MAINTENANCE ──
+function openMaintModal(){
+  document.getElementById('m-desc').value='';
+  document.getElementById('m-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('m-km').value='';
+  document.getElementById('m-cost').value='';
+  document.getElementById('m-next').value='';
+  document.getElementById('m-notes').value='';
+  document.getElementById('maint-modal').classList.add('open');
+}
+
+function saveMaintenance(){
+  const desc=document.getElementById('m-desc').value.trim();
+  if(!desc){showToast('⚠ Descreve a manutenção');return;}
+  const veh=data.vehicles.find(v=>v.id===maintVehicleId);if(!veh)return;
+  if(!veh.maintenance)veh.maintenance=[];
+  veh.maintenance.push({
+    desc,
+    date:document.getElementById('m-date').value,
+    km:document.getElementById('m-km').value,
+    cost:document.getElementById('m-cost').value,
+    next:document.getElementById('m-next').value,
+    notes:document.getElementById('m-notes').value.trim()
+  });
+  save();render();
+  closeModal('maint-modal');
+  openDetail(maintVehicleId);
+  showToast('✓ Manutenção registada');
+}
+
+function deleteMaint(vehicleId,idx){
+  const veh=data.vehicles.find(v=>v.id===vehicleId);if(!veh)return;
+  // idx is from reversed array so convert
+  const realIdx=(veh.maintenance.length-1)-idx;
+  if(!confirm('Apagar este registo?'))return;
+  veh.maintenance.splice(realIdx,1);
+  save();render();openDetail(vehicleId);
+  showToast('Registo removido');
+}
+
+// ── MODAL HELPERS ──
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function closeOnOverlay(e,id){if(e.target.id===id)closeModal(id)}
+
+// ── EXPORT / IMPORT ──
+function exportData(){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='garagem_dados.json';
+  a.click();
+  showToast('✓ Dados exportados');
+}
+
+function importData(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const imported=JSON.parse(ev.target.result);
+      if(!imported.vehicles)throw new Error();
+      if(!confirm(`Importar ${imported.vehicles.length} viatura(s)? Os dados atuais serão substituídos.`))return;
+      data=imported;save();render();
+      showToast(`✓ ${data.vehicles.length} viaturas importadas`);
+    }catch{showToast('⚠ Ficheiro inválido');}
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
+// ── TOAST ──
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ── INIT ──
+load();render();
+</script>
+</body>
+</html>
